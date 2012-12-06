@@ -3,7 +3,7 @@ MetricFactory
 
 Accept, process and submit metrics.
 
-.. note::
+.. NOTE::
    MetricFactory is a work in progress.
 
 What?
