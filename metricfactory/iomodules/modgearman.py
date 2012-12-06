@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-#       modgearmanperfdata.py
+#       modgearman.py
 #
 #       Copyright 2012 Jelle Smet development@smetj.net
 #
@@ -31,7 +31,7 @@ from Crypto.Cipher import AES
 import base64
 from gevent import monkey;monkey.patch_all()
 
-class MgInput(Greenlet, QueueFunctions, Block):
+class ModGearman(Greenlet, QueueFunctions, Block):
     '''    
     Parameters:
         * hostnames:    A list with hostname:port entries.
