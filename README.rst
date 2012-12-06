@@ -24,8 +24,7 @@ Installation
 ------------
 Download from Github and run:
 
-.. code-block:: text
-	python setup.py install
+python setup.py install
 
 
 Examples
