@@ -3,12 +3,10 @@ MetricFactory
 
 Accept, process and submit metrics.
 
-.. NOTE::
-   MetricFactory is a work in progress.
-
 What?
 -----
 A tool to build servers which accept, process and submit metrics.
+
 
 How?
 ----
