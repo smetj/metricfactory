@@ -43,7 +43,7 @@ setup(
     name=PROJECT,
     version=VERSION,
 
-    description='Consume, process and forward metrics.',
+    description='Consume, process and submit metrics.',
     long_description=long_description,
 
     author='Jelle Smet',
@@ -74,7 +74,7 @@ setup(
 
     entry_points={
         'console_scripts': [
-            'metricfactory = metricfactory.main:main'
+		'metricfactory = metricfactory.metricfactory:main'
             ]
         },
 
