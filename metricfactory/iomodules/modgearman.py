@@ -48,7 +48,7 @@ class ModGearman(Greenlet, QueueFunctions, Block):
     '''
 
     def __init__(self, name, *args, **kwargs):
-       
+        QueueFunctions.__init__(self)
         Greenlet.__init__(self)
         Block.__init__(self)
         self.logging = logging.getLogger( name )
