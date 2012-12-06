@@ -32,10 +32,11 @@ import socket
 import xdrlib
 
 class DecodeGanglia(PrimitiveActor):
-    '''**Skeleton Wishbone module is a minimal module which does nothing more than
-    shoveling data from inbox to outbox.**
+    '''**DecodeGanglia is Wishbone module which converts Ganglia data into a 
+    dictionary.***
 
-    It can be used as an example/base for new modules.
+    Receives xdr formatted data coming from a Ganglia client and decodes it
+    into a dictionary.
     
     Parameters:
     
