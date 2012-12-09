@@ -27,10 +27,15 @@
 # Patrick Debois https://gist.github.com/1376525
 
 from wishbone.toolkit import PrimitiveActor
-import pprint
 import socket
 import xdrlib
 
+class DecodeGangliaException(Exception):
+    def __init__(self, value):
+        self.value = value
+    def __str__(self):
+        return repr(self.value)
+    
 class DecodeGanglia(PrimitiveActor):
     '''**DecodeGanglia is Wishbone module which converts Ganglia data into a 
     dictionary.***
@@ -38,9 +43,12 @@ class DecodeGanglia(PrimitiveActor):
     Receives xdr formatted data coming from a Ganglia client and decodes it
     into a dictionary.
     
+    When required, heartbeat type data is dropped
+    
     Parameters:
     
-        - name (str):    The instance name when initiated.
+        - name (str):   The instance name when initiated.
+        - meta (bool):  When True, drops data with version 128
     
     Queues:
     
@@ -48,67 +56,76 @@ class DecodeGanglia(PrimitiveActor):
         - outbox:   Outgoing events.
     '''
     
-    def __init__(self, name):
+    def __init__(self, name, meta=False):
         PrimitiveActor.__init__(self, name)
-        
-    def parse_packet(self, data):
-        unpacker = xdrlib.Unpacker(data)
-
-        version = unpacker.unpack_int()
-        if version == 128:
-            return GangliaMetaPacket(unpacker, version)
-        elif version in (132, 133, 134):
-            return GangliaHeartbeatPacket(unpacker, version)
-        else:
-            raise Exception('Unknown version:', version)            
+        self.name=name
+        self.meta=meta
     
-    def consume(self,doc):        
+    def parsePacket(self, data):
+        unpacker = xdrlib.Unpacker(data)
+        version = unpacker.unpack_int()
+        
+        if version in (132,133,134):
+            return self.doHeartBeatPacket(unpacker,version)
+        elif version == 128:
+            if self.meta == True:
+                return self.doMetaPacket(unpacker,version)
+            else:
+                raise DecodeGangliaException("Version 128 is ignored.")        
+        else:
+            raise Exception("Unknown version number: %s"%version)
+    
+    def consume(self,doc):
         try:
-            doc['data']=self.parse_packet(doc["data"]).__dict__
-            try:
-                doc['data']['value']
-                self.putData(doc)
-            except:
-                pass
+            doc['data']=self.parsePacket(doc["data"])
+            self.putData(doc)
         except Exception as err:
-            self.logging.debug('Could not decode data. Reason: %s'%err)
-       
+            self.logging.debug ( "Failed to decode package. Reason: %s" %err )
+        except DecodeGangliaException as err:
+            self.logging.debug ( err )
+        
     def shutdown(self):
         self.logging.info('Shutdown')
 
-class GangliaMetaPacket(object):
-    def __init__(self, unpacker, version):
-        self.version = version
-        self.hostname = unpacker.unpack_string()
-        self.metric_name = unpacker.unpack_string()
-        self.spoofed_hostname = bool(unpacker.unpack_int())
-        self.metric_type = unpacker.unpack_string()
-        self.metric_name2 = unpacker.unpack_string()
-        self.units = unpacker.unpack_string()
-        self.slope = unpacker.unpack_int()
-        self.tmax = unpacker.unpack_int()
-        self.dmax = unpacker.unpack_int()
-        
-        self.data = {}
+    def doMetaPacket(self, unpacker, version):
+        data = {"version":version,
+                "hostname":unpacker.unpack_string(),
+                "metric_name":unpacker.unpack_string(),
+                "spoofed_hostname":bool(unpacker.unpack_int()),
+                "metric_type":unpacker.unpack_string(),
+                "metric_name2":unpacker.unpack_string(),
+                "units":unpacker.unpack_string(),
+                "slope":unpacker.unpack_int(),
+                "tmax":unpacker.unpack_int(),
+                "dmax":unpacker.unpack_int(),
+                "metrics":{}
+                }
         remaining = unpacker.unpack_int()
         for i in range(remaining):
-            key = unpacker.unpack_string()
-            value = unpacker.unpack_string()
-            self.data[key] = value
+            data["metrics"][unpacker.unpack_string()]=unpacker.unpack_string()
         unpacker.done()
+        if data != None:
+            return data
+        else:
+            raise Exception ("Empty dataset")
+    
+    def doHeartBeatPacket(self, unpacker, version):
+        data = {"version":version,
+                "hostname":unpacker.unpack_string(),
+                "metric_name":unpacker.unpack_string(),
+                "spoof":bool(unpacker.unpack_int()),
+                "format":unpacker.unpack_string()
+                }
 
-class GangliaHeartbeatPacket(object):
-    def __init__(self, unpacker, version):
-        self.version = version
-        self.hostname = unpacker.unpack_string()
-        self.metric_name = unpacker.unpack_string()
-        self.spoof = bool(unpacker.unpack_int())
-        self.format = unpacker.unpack_string()
-
-        if self.format.endswith('f'):
-            self.value = unpacker.unpack_float()
-        elif self.format.endswith('u') or self.format.endswith('d'):
-            self.value = unpacker.unpack_int()
-        elif self.format.endswith('s'):
-            self.value = unpacker.unpack_string()
+        if data["format"].endswith('f'):
+            data["value"] = unpacker.unpack_float()
+        elif data["format"].endswith('u') or data["format"].endswith('d'):
+            data["value"] = unpacker.unpack_int()
+        elif data["format"].endswith('s'):
+            data["value"] = unpacker.unpack_string()
         unpacker.done()
+        if data != None:
+            return data
+        else:
+            raise Exception ("Empty dataset")
+
