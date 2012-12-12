@@ -27,7 +27,6 @@
 # Patrick Debois https://gist.github.com/1376525
 
 from wishbone.toolkit import PrimitiveActor
-import socket
 import xdrlib
 
 class DecodeGangliaException(Exception):
