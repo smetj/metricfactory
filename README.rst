@@ -11,7 +11,7 @@ A tool to build servers which accept, process and submit metrics.
 How?
 ----
 MetricFactory uses the WishBone library to build servers which allow you to
-accept, convert and process metrics from once source and submit them to another destination.
+accept, convert and process metrics from one source and submit them to another destination.
 
 
 Documentation
