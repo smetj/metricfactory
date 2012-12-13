@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-#       modgearman.py
+#       gearmand.py
 #
 #       Copyright 2012 Jelle Smet development@smetj.net
 #
@@ -31,8 +31,12 @@ from Crypto.Cipher import AES
 import base64
 from gevent import monkey;monkey.patch_all()
 
-class ModGearman(Greenlet, QueueFunctions, Block):
-    '''    
+class Gearmand(Greenlet, QueueFunctions, Block):
+    '''
+    ***Consumes jobs from a Gearmand server.***
+    
+    Consumes jobs from a Gearmand server.
+    
     Parameters:
         * hostnames:    A list with hostname:port entries.
                         Default: []
