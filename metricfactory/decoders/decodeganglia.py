@@ -28,6 +28,8 @@
 
 from wishbone.toolkit import PrimitiveActor
 import xdrlib
+from time import time
+from gevent.monkey import patch_time;patch_time()
 
 class DecodeGangliaException(Exception):
     def __init__(self, value):
@@ -36,13 +38,21 @@ class DecodeGangliaException(Exception):
         return repr(self.value)
     
 class DecodeGanglia(PrimitiveActor):
-    '''**DecodeGanglia is Wishbone module which converts Ganglia data into a 
-    dictionary.***
+    '''**DecodeGanglia is MetricFactory module which decodes Ganglia metrics into
+    a MetricFactory format.***
 
     Receives xdr formatted data coming from a Ganglia client and decodes it
-    into a dictionary.
+    into a MetricFactory format.
     
-    When required, heartbeat type data is dropped
+    metric = {  "type":string,
+                "time":time(),
+                "source":string,
+                "name":string,
+                "value":string,
+                "units":string,
+                "tags":list
+                }
+    
     
     Parameters:
     
@@ -76,7 +86,8 @@ class DecodeGanglia(PrimitiveActor):
     
     def consume(self,doc):
         try:
-            doc['data']=self.parsePacket(doc["data"])
+            data = self.parsePacket(doc["data"])
+            doc['data']={ "type":"ganglia","time":time(),"source":data["hostname"],"name":data["metric_name"],"value":data["value"],"units":None,"tags":[] }            
             self.putData(doc)
         except Exception as err:
             self.logging.debug ( "Failed to decode package. Reason: %s" %err )

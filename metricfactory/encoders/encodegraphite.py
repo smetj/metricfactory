@@ -23,27 +23,23 @@
 #       
 
 from wishbone.toolkit import PrimitiveActor
-from time import time
-from gevent.monkey import patch_time;patch_time()
-
 
 class EncodeGraphite(PrimitiveActor):
-    '''**Encodes the data field into a graphite entry.**
+    '''**Encodes the data field into a Graphite format.**
     
-    Takes a dictionary and converts it into a graphite metric entry.
-    
-    This module is incomplete.  The input format can change need to
-    figure out a way to cope with this.
+    Encodes the doc["data"] field into a Graphite formatted string ready to dump
+    into Graphite.
     
     Parameters:
     
-        - name (str):   The instance name when initiated.
-        - prefix (str): A prefix to assign to all metrics.
+        - name (str):       The instance name when initiated.
+        - prefix (str):     A prefix to assign to all metrics.
+        - template (str):   A template which shapes the metric name.
     
     Queues:
     
-        - inbox:    Incoming events.
-        - outbox:   Outgoing events.
+        - inbox:    Incoming MetricFactory formatted events.
+        - outbox:   Outgoing Graphite formatted events.
     '''
     
     def __init__(self, name,prefix=''):
@@ -53,7 +49,7 @@ class EncodeGraphite(PrimitiveActor):
     
     def consume(self,doc):
         #system.loadavg_1min 1.05 1257715746
-        doc["data"]="%s.%s.%s %s %s"%(self.prefix,doc["data"]["hostname"].split('.')[0],doc["data"]["metric_name"],doc["data"]["value"],time())
+        doc["data"]="%s.%s.%s %s %s"%(self.prefix,doc["data"]["source"].split('.')[0],doc["data"]["name"],doc["data"]["value"],doc["data"]["time"])
         self.putData(doc)
        
     def shutdown(self):
