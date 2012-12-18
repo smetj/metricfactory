@@ -67,7 +67,7 @@ setup(
 
     provides=[],
     dependency_links = ['http://github.com/smetj/wishbone/tarball/master#egg=wishbone-0.2beta'],
-    install_requires = ['distribute', 'wishbone', 'gearman', 'pycrypto'],
+    install_requires = ['distribute', 'wishbone'],
 
     namespace_packages=[],
     packages=find_packages(),
