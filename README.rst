@@ -1,8 +1,6 @@
 MetricFactory
 =============
 
-Accept, process and submit metrics.
-
 
 What?
 -----
