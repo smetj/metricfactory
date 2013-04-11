@@ -1,9 +1,5 @@
-
-::
-                      _
-|\/|  _ _|_ ._ o  _ |_ _.  _ _|_  _  ._
-|  | (/_ |_ |  | (_ | (_| (_  |_ (_) | \/
-                                       /
+MetricFactory
+=============
 
 Accept, process and submit metrics.
 
