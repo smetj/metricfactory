@@ -26,7 +26,7 @@ from wishbone.toolkit import PrimitiveActor
 import re
 import sys
 
-class DecodeModGearman(PrimitiveActor):
+class ModGearman(PrimitiveActor):
     '''**DecodeModGearman is MetricFactory module which decodes Mod_Gearman metrics
     into a MetricFactory format.***
 
@@ -75,12 +75,12 @@ class DecodeModGearman(PrimitiveActor):
             metric_type = "serviceperfdata"
         if 'hostperfdata' in metadata:
             metric_type = "hostperfdata"
-            
+
         for metric in metadata[metric_type].split(" "):
             (key,value)=metric.split('=')
             value=value.split(";")[0]
             value_unit = self.regex.search(value)
-            
+
             if value_unit == None:
                 units=''
             elif value_unit.group(2):

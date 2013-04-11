@@ -2,24 +2,24 @@
 # -*- coding: utf-8 -*-
 #
 #       decodeganglia.py
-#       
+#
 #       Copyright 2012 Jelle Smet development@smetj.net
-#       
+#
 #       This program is free software; you can redistribute it and/or modify
 #       it under the terms of the GNU General Public License as published by
 #       the Free Software Foundation; either version 3 of the License, or
 #       (at your option) any later version.
-#       
+#
 #       This program is distributed in the hope that it will be useful,
 #       but WITHOUT ANY WARRANTY; without even the implied warranty of
 #       MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #       GNU General Public License for more details.
-#       
+#
 #       You should have received a copy of the GNU General Public License
 #       along with this program; if not, write to the Free Software
 #       Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #       MA 02110-1301, USA.
-#       
+#
 #
 
 #A big thanks to:
@@ -36,14 +36,14 @@ class DecodeGangliaException(Exception):
         self.value = value
     def __str__(self):
         return repr(self.value)
-    
-class DecodeGanglia(PrimitiveActor):
+
+class Ganglia(PrimitiveActor):
     '''**DecodeGanglia is MetricFactory module which decodes Ganglia metrics into
     a MetricFactory format.***
 
     Receives xdr formatted data coming from a Ganglia client and decodes it
     into a MetricFactory format.
-    
+
     metric = {  "type":string,
                 "time":time(),
                 "source":string,
@@ -52,48 +52,48 @@ class DecodeGanglia(PrimitiveActor):
                 "units":string,
                 "tags":list
                 }
-    
-    
+
+
     Parameters:
-    
+
         - name (str):   The instance name when initiated.
         - meta (bool):  When True, drops data with version 128
-    
+
     Queues:
-    
+
         - inbox:    Incoming events.
         - outbox:   Outgoing events.
     '''
-    
+
     def __init__(self, name, meta=False):
         PrimitiveActor.__init__(self, name)
         self.name=name
         self.meta=meta
-    
+
     def parsePacket(self, data):
         unpacker = xdrlib.Unpacker(data)
         version = unpacker.unpack_int()
-        
+
         if version in (132,133,134):
             return self.doHeartBeatPacket(unpacker,version)
         elif version == 128:
             if self.meta == True:
                 return self.doMetaPacket(unpacker,version)
             else:
-                raise DecodeGangliaException("Version 128 is ignored.")        
+                raise DecodeGangliaException("Version 128 is ignored.")
         else:
             raise Exception("Unknown version number: %s"%version)
-    
+
     def consume(self,doc):
         try:
             data = self.parsePacket(doc["data"])
-            doc['data']={ "type":"ganglia","time":time(),"source":data["hostname"],"name":data["metric_name"],"value":data["value"],"units":None,"tags":[] }            
+            doc['data']={ "type":"ganglia","time":time(),"source":data["hostname"],"name":data["metric_name"],"value":data["value"],"units":None,"tags":[] }
             self.putData(doc)
         except Exception as err:
             self.logging.debug ( "Failed to decode package. Reason: %s" %err )
         except DecodeGangliaException as err:
             self.logging.debug ( err )
-        
+
     def shutdown(self):
         self.logging.info('Shutdown')
 
@@ -118,7 +118,7 @@ class DecodeGanglia(PrimitiveActor):
             return data
         else:
             raise Exception ("Empty dataset")
-    
+
     def doHeartBeatPacket(self, unpacker, version):
         data = {"version":version,
                 "hostname":unpacker.unpack_string(),

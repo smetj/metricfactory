@@ -2,25 +2,25 @@
 # -*- coding: utf-8 -*-
 #
 #  untitled.py
-#  
+#
 #  Copyright 2012 Jelle Smet <development@smetj.net>
-#  
+#
 #  This program is free software; you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
 #  the Free Software Foundation; either version 3 of the License, or
 #  (at your option) any later version.
-#  
+#
 #  This program is distributed in the hope that it will be useful,
 #  but WITHOUT ANY WARRANTY; without even the implied warranty of
 #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #  GNU General Public License for more details.
-#  
+#
 #  You should have received a copy of the GNU General Public License
 #  along with this program; if not, write to the Free Software
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
-#  
-#  
+#
+#
 
 PROJECT = 'metricfactory'
 
@@ -63,11 +63,8 @@ setup(
 
     platforms=['Any'],
 
-    scripts=[],
-
-    provides=[],
-    dependency_links = ['http://github.com/smetj/wishbone/tarball/master#egg=wishbone-0.2.1'],
-    install_requires = ['distribute', 'wishbone'],
+    dependency_links = ['http://github.com/smetj/wishbone/tarball/master#egg=wishbone-0.3.1beta'],
+    install_requires = ['distribute', 'wishbone>=0.3.1beta'],
 
     namespace_packages=[],
     packages=find_packages(),
@@ -76,8 +73,19 @@ setup(
     entry_points={
         'console_scripts': [
 		'metricfactory = metricfactory.metricfactory:main'
-            ]
-        },
+         ],
+        'metricfactory.encoder': [
+        "Graphite = metricfactory.encoder:Graphite"
+        ],
+        'metricfactory.decoder': [
+        "ModGearman = metricfactory.decoder:ModGearman",
+        "Ganglia = metricfactory.decoder:Ganglia"
+        ],
+        'metricfactory.filter': [
+        "MetricFilter = metricfactory.filter:MetricFilter"
+        ]
+
+    },
 
     zip_safe=False,
-    )
+)
