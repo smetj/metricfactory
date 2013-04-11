@@ -22,7 +22,8 @@ yo to process metrics.  Besides these modules you will also require one or
 more Wishbone IOmodules which allows you to accept and submit the metrics
 outside of the framework.
 
-Using a bootstrap file you can start a Metricfactory server from commandline.
+Using a bootstrap file you select and connect different modules into an event
+pipeline and start a Metricfactory server from commandline.
 
 
 Installation
@@ -39,6 +40,13 @@ https://github.com/smetj/wishbone from Github.
 Usage
 -----
 
+Have a look at the available modules:
+
+    $ metricfactory list
+
+To start 2 parallel instances of a server in the background:
+
+    $ metricfactory start --config /path/to/boostrapfile.json --instances 2
 
 
 Examples
