@@ -20,8 +20,15 @@ yo to process metrics.  Besides these modules you will also require one or
 more Wishbone IOmodules from https://github.com/smetj/wishboneModules which
 allow you to accept and submit the metrics outside of the framework.
 
+Decoders convert metrics into an internal format.  Encoders convert them again
+to a native format.
+
 Using a bootstrap file you select and connect different modules into an event
 pipeline and start a Metricfactory server from commandline.
+
+An event pipeline typically looks like this:
+
+source -> IOmodule -> decoder -> filter -> encoder -> IOmodule -> destination
 
 
 Installation
