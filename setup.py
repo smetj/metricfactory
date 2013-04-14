@@ -83,6 +83,9 @@ setup(
         ],
         'metricfactory.filter': [
         "MetricFilter = metricfactory.filter:MetricFilter"
+        ],
+        'metricfactory.test': [
+        "Hammer = metricfactory.test:Hammer"
         ]
 
     },
