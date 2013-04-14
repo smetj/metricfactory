@@ -42,14 +42,14 @@ class Graphite(PrimitiveActor):
         - outbox:   Outgoing Graphite formatted events.
     '''
 
-    def __init__(self, name,prefix=''):
+    def __init__(self, name, prefix=''):
         PrimitiveActor.__init__(self, name)
         self.name=name
         self.prefix=prefix
 
     def consume(self,doc):
         #system.loadavg_1min 1.05 1257715746
-        doc["data"]="%s.%s.%s %s %s"%(self.prefix,doc["data"]["source"].split('.')[0],doc["data"]["name"],doc["data"]["value"],doc["data"]["time"])
+        doc["data"]="%s.%s.%s %s %s\n"%(self.prefix,doc["data"]["source"],doc["data"]["name"],doc["data"]["value"],doc["data"]["time"])
         self.putData(doc)
 
     def shutdown(self):
