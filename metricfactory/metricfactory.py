@@ -30,7 +30,7 @@ def main():
         version="0.1",
         author="Jelle Smet",
         support="",
-        groups=["metricfactory.encoder","metricfactory.decoder","metricfactory.filter"]
+        groups=["metricfactory.encoder","metricfactory.decoder","metricfactory.filter","metricfactory.test"]
     )
 
 if __name__ == '__main__':
