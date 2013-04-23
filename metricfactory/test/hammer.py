@@ -48,20 +48,25 @@ class Hammer(PrimitiveActor):
     Parameters:
 
         - name (str):       The instance name when initiated.
+        - total (int):      The total number of metrics to produce. Indefinite when 0.
+                            (default 0)
         - sleep (float):    The time in seconds to wait between generating each metric.
-        - rnd_source (int): When larger than 0 generates a random hostname.
-        - rnd_name (int):   The length of the metric name. (default 1)
-        - rnd_value (int):  The maximum value.  A random int value is chosen
-                            between 0 and this value.  (default 1)
+                            (default 0)
+        - rnd_source (int): When larger than 0 generates a random hostname otherwise takes
+                            the host's hostname. (default 0)
+        - rnd_name (int):   The length of the random metric name. Chosen from a-zA-Z0-9
+                            (default 1).
+        - rnd_value (int):  The maximum of the randomized metric value (default 1).
 
     Queues:
 
         - inbox:    Generated metrics.
     '''
 
-    def __init__(self, name, sleep=0, rnd_source=0, rnd_name=1, rnd_value=1):
+    def __init__(self, name, total=0, sleep=0, rnd_source=0, rnd_name=1, rnd_value=1):
         PrimitiveActor.__init__(self, name)
         self.name=name
+        self.total=total
         self.sleep=float(sleep)
         self.rnd_source=int(rnd_source)
         self.rnd_name=int(rnd_name)
@@ -77,9 +82,14 @@ class Hammer(PrimitiveActor):
 
     def _run(self):
         #Overwrites the PrimitiveActor version
+        counter=0
         while self.block() == True:
             self.sendData({"header":{},"data":self.generateMetric()},"inbox")
+            counter+=1
             sleep(self.sleep)
+            if self.total != 0 and counter == self.total:
+                self.logging.info("Reached total number of metrics (%s) to produce. Will not produce more."%(counter))
+                break
 
     def generateMetric(self):
         return {
@@ -96,13 +106,13 @@ class Hammer(PrimitiveActor):
         return randint(0,self.rnd_value)
 
     def __getMetricName(self):
-        return ''.join(choice(string.ascii_lowercase + string.ascii_uppercase + string.digits) for x in range(self.rnd_name))
+        return "metric_%s"%(randint(0, self.rnd_name-1))
 
     def __getHostname(self):
         return gethostname()
 
     def __getRandomHostname(self):
-        return "host%s"%(randint(0,int(self.rnd_source)))
+        return "host_%s"%(randint(0,self.rnd_source-1))
 
     def shutdown(self):
         self.logging.info('Shutdown')
