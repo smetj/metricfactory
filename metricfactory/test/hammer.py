@@ -48,71 +48,96 @@ class Hammer(PrimitiveActor):
     Parameters:
 
         - name (str):       The instance name when initiated.
-        - total (int):      The total number of metrics to produce. Indefinite when 0.
+
+        - total (int):      The total number of metrics to produce in random mode. Indefinite when 0.
                             (default 0)
+
+        - mode (str):       The mode to run in. Options: sequential, random.
+                            (default random)
+
         - sleep (float):    The time in seconds to wait between generating each metric.
                             (default 0)
-        - rnd_source (int): When larger than 0 generates a random hostname otherwise takes
-                            the host's hostname. (default 0)
-        - rnd_name (int):   The length of the random metric name. Chosen from a-zA-Z0-9
-                            (default 1).
-        - rnd_value (int):  The maximum of the randomized metric value (default 1).
+
+        - host (int):       The maximum suffix number for the source host: host_
+                            (default 0)
+
+        - metric (int):     The maximum suffix number for the metric name: metric_
+                            (default 0)
+
+        - value (int):      The maximum of the randomized metric value (default 1).
 
     Queues:
 
         - inbox:    Generated metrics.
+
+    When mode is random, for each metric a random hostname and metric name is
+    chosen within the boundaries set by *host* and *metric*. You can control
+    the total number of metrics using the *total* parameter.
+
+    When mode is sequential, X unique metrics are generate per N hosts, where
+    X is the *metric* parameter and N is the *host* parameter.  In this case
+    each metric will only contain 1 value, effectively creating X * Y unique
+    metrics.  In this case the total parameter has no meaning.
     '''
 
-    def __init__(self, name, total=0, sleep=0, rnd_source=0, rnd_name=1, rnd_value=1):
+    def __init__(self, name, total=0, mode="random", sleep=0, host=0, metric=0, value=1):
         PrimitiveActor.__init__(self, name)
         self.name=name
         self.total=total
+        self.mode=mode
         self.sleep=float(sleep)
-        self.rnd_source=int(rnd_source)
-        self.rnd_name=int(rnd_name)
-        self.rnd_value=int(rnd_value)
-        if rnd_source == 0:
-            self.getHostname=self.__getHostname
-        else:
-            self.getHostname=self.__getRandomHostname
+        self.host=int(host)
+        self.metric=int(metric)
+        self.value=int(value)
 
     def consume(self,doc):
-        #Nothing to do
+        #Nothing to do since we do not expect incoming data.
         pass
 
     def _run(self):
         #Overwrites the PrimitiveActor version
-        counter=0
-        while self.block() == True:
-            self.sendData({"header":{},"data":self.generateMetric()},"inbox")
-            counter+=1
-            sleep(self.sleep)
-            if self.total != 0 and counter == self.total:
-                self.logging.info("Reached total number of metrics (%s) to produce. Will not produce more."%(counter))
-                break
+        if self.mode == "random" and self.total == 0:
+            while self.block() == True:
+                self.sendData({"header":{},"data":self.generateMetric()},"inbox")
+        elif self.mode == "random" and self.total > 0:
+            for counter in xrange(self.total):
+                self.sendData({"header":{},"data":self.generateMetric()},"inbox")
+                sleep(self.sleep)
+            self.logging.info("Reached total number of metrics (%s) to produce. Will not produce more."%(self.total))
+        elif self.mode == "sequential":
+            for host in xrange(self.host):
+                for metric in xrange(self.metric):
+                    data = self.generateMetric(host="host_%s"%(host), metric="metric_%s"%(metric))
+                    self.sendData({"header":{},"data":data},"inbox")
+                    sleep(self.sleep)
+            self.logging.info("Reached total number of metrics (%s) to produce. Will not produce more."%(self.host*self.metric))
 
-    def generateMetric(self):
+    def generateMetric(self, host=None, metric=None, value=None):
+        if host == None:
+            host = self.__getHostname()
+        if metric == None:
+            metric = self.__getMetricName()
+        if value == None:
+            value = self.__getValue()
+
         return {
         "type":"metricfactoryHammer",
-        "time":int(time()),
-        "source":self.getHostname(),
-        "name":self.__getMetricName(),
-        "value":self.__getValue(),
+        "time":time(),
+        "source":host,
+        "name":metric,
+        "value":value,
         "unit":"hits",
         "tags":[]
         }
 
     def __getValue(self):
-        return randint(0,self.rnd_value)
+        return randint(0,self.value)
 
     def __getMetricName(self):
-        return "metric_%s"%(randint(0, self.rnd_name-1))
+        return "metric_%s"%(randint(0, self.metric))
 
     def __getHostname(self):
-        return gethostname()
-
-    def __getRandomHostname(self):
-        return "host_%s"%(randint(0,self.rnd_source-1))
+        return "host_%s"%(randint(0,self.host))
 
     def shutdown(self):
         self.logging.info('Shutdown')
