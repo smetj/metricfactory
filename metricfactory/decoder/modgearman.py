@@ -90,12 +90,25 @@ class ModGearman(PrimitiveActor):
                 units=''
             yield ({"type":"nagios",
                     "time":metadata["timet"],
-                    "source":metadata["hostname"],
-                    "name":key,
+                    "source":self.__filter(metadata["hostname"]),
+                    "name":self.__filter(key),
                     "value":value,
                     "units":units,
-                    "tags":[metadata.get("servicecheckcommand",metadata.get("hostcheckcommand","")),metadata.get("servicedesc","hostcheck")]
+                    "tags":[metadata.get("servicecheckcommand",metadata.get("hostcheckcommand","")),
+                        self.__filter(metadata.get("servicedesc","hostcheck"))]
                     })
+
+    def __filter(self, name):
+        '''Filter out problematic characters.
+
+        This should become a separate module allowing the user to define filter rules
+        from a bootstrap file.
+        '''
+
+        name=name.replace("'",'')
+        name=name.replace('"','')
+        name=name.replace('.','_')
+        return name
 
     def shutdown(self):
         self.logging.info('Shutdown')
