@@ -99,6 +99,7 @@ class Hammer(PrimitiveActor):
         if self.mode == "random" and self.total == 0:
             while self.block() == True:
                 self.sendData({"header":{},"data":self.generateMetric()},"inbox")
+                sleep(self.sleep)
         elif self.mode == "random" and self.total > 0:
             for counter in xrange(self.total):
                 self.sendData({"header":{},"data":self.generateMetric()},"inbox")
