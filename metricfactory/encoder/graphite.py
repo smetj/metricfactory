@@ -49,7 +49,14 @@ class Graphite(PrimitiveActor):
 
     def consume(self,doc):
         #system.loadavg_1min 1.05 1257715746
-        doc["data"]="%s.%s.%s %s %s\n"%(self.prefix,doc["data"]["source"],doc["data"]["name"],doc["data"]["value"],doc["data"]["time"])
+        if doc["data"]["type"] == "nagios":
+            if doc["data"]["tags"][1] == "hostcheck":
+                doc["data"]="%s.%s.hostcheck.%s %s %s\n"%(self.prefix,doc["data"]["source"],doc["data"]["name"],doc["data"]["value"],doc["data"]["time"])
+            else:
+                doc["data"]="%s.%s.%s.%s %s %s\n"%(self.prefix,doc["data"]["source"],doc["data"]["tags"][1],doc["data"]["name"],doc["data"]["value"],doc["data"]["time"])
+
+        else:
+            doc["data"]="%s.%s.%s %s %s\n"%(self.prefix,doc["data"]["source"],doc["data"]["name"],doc["data"]["value"],doc["data"]["time"])
         self.putData(doc)
 
     def shutdown(self):
