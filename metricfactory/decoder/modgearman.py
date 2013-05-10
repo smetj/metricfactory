@@ -94,7 +94,7 @@ class ModGearman(PrimitiveActor):
                     "name":self.__filter(key),
                     "value":value,
                     "units":units,
-                    "tags":[metadata.get("servicecheckcommand",metadata.get("hostcheckcommand","")),
+                    "tags":[self.__filter(metadata.get("servicecheckcommand",metadata.get("hostcheckcommand",""))),
                         self.__filter(metadata.get("servicedesc","hostcheck"))]
                     })
 
@@ -102,13 +102,15 @@ class ModGearman(PrimitiveActor):
         '''Filter out problematic characters.
 
         This should become a separate module allowing the user to define filter rules
-        from a bootstrap file.
+        from a bootstrap file and most likely become a separate module.
         '''
 
         name=name.replace("'",'')
         name=name.replace('"','')
         name=name.replace('.','_')
-        return name
+        name=name.replace(' ','_')
+
+        return name.lower()
 
     def shutdown(self):
         self.logging.info('Shutdown')
