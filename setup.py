@@ -25,7 +25,7 @@
 PROJECT = 'metricfactory'
 
 # Change docs/sphinx/conf.py too!
-VERSION = '0.1'
+VERSION = '0.2'
 
 from setuptools import setup, find_packages
 
@@ -62,30 +62,25 @@ setup(
                  ],
 
     platforms=['Any'],
-
-    dependency_links = ['http://github.com/smetj/wishbone/tarball/master#egg=wishbone-0.3.1beta'],
-    install_requires = ['distribute', 'wishbone>=0.3.1beta'],
+    install_requires = ['distribute', 'wishbone'],
 
     namespace_packages=[],
     packages=find_packages(),
     include_package_data=True,
 
     entry_points={
-        'console_scripts': [
-		'metricfactory = metricfactory.metricfactory:main'
-         ],
         'metricfactory.encoder': [
-        "Graphite = metricfactory.encoder:Graphite"
+        "graphite = metricfactory.encoder:Graphite"
         ],
         'metricfactory.decoder': [
         "ModGearman = metricfactory.decoder:ModGearman",
-        "Ganglia = metricfactory.decoder:Ganglia"
+        "ganglia = metricfactory.decoder:Ganglia"
         ],
         'metricfactory.filter': [
-        "MetricFilter = metricfactory.filter:MetricFilter"
+        "metricFilter = metricfactory.filter:MetricFilter"
         ],
         'metricfactory.test': [
-        "Hammer = metricfactory.test:Hammer"
+        "hammer = metricfactory.test:Hammer"
         ]
 
     },
