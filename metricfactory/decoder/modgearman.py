@@ -22,13 +22,12 @@
 #
 #
 
-from wishbone.toolkit import PrimitiveActor
+from wishbone import Actor
 import re
 import sys
 
-class ModGearman(PrimitiveActor):
-    '''**DecodeModGearman is MetricFactory module which decodes Mod_Gearman metrics
-    into a MetricFactory format.***
+class ModGearman(Actor):
+    '''**A module to decodes Mod_Gearman metrics into the default format.**
 
     Receives Nagios spool directory formatted data and decodes it into a
     MetricFactory format.
@@ -55,7 +54,7 @@ class ModGearman(PrimitiveActor):
     '''
 
     def __init__(self, name):
-        PrimitiveActor.__init__(self, name)
+        Actor.__init__(self, name)
         self.regex=re.compile('(.*?)(\D+)$')
 
     def consume(self,doc):
@@ -111,6 +110,3 @@ class ModGearman(PrimitiveActor):
         name=name.replace(' ','_')
 
         return name.lower()
-
-    def shutdown(self):
-        self.logging.info('Shutdown')

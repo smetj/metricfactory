@@ -22,14 +22,15 @@
 #
 #
 
-from wishbone.toolkit import PrimitiveActor
+from wishbone import Actor
 from time import time
 from random import randint, choice
 import string
 from gevent import sleep
 from gevent.socket import gethostname
+from gevent import spawn
 
-class Hammer(PrimitiveActor):
+class Hammer(Actor):
     '''**Generates random metric events.**
 
     Generates random metrics events in internal format with the purpose of
@@ -68,7 +69,7 @@ class Hammer(PrimitiveActor):
 
     Queues:
 
-        - inbox:    Generated metrics.
+        - outbox:    Generated metrics.
 
     When mode is random, for each metric a random hostname and metric name is
     chosen within the boundaries set by *host* and *metric*. You can control
@@ -81,7 +82,7 @@ class Hammer(PrimitiveActor):
     '''
 
     def __init__(self, name, total=0, mode="random", sleep=0, host=0, metric=0, value=1):
-        PrimitiveActor.__init__(self, name)
+        Actor.__init__(self, name)
         self.name=name
         self.total=total
         self.mode=mode
@@ -94,22 +95,30 @@ class Hammer(PrimitiveActor):
         #Nothing to do since we do not expect incoming data.
         pass
 
-    def _run(self):
-        #Overwrites the PrimitiveActor version
+    def preHook(self):
+        spawn(self.doGenerate)
+
+    def doGenerate(self):
         if self.mode == "random" and self.total == 0:
-            while self.block() == True:
-                self.sendData({"header":{},"data":self.generateMetric()},"inbox")
+            switcher = self.getContextSwitcher(100, self.loop)
+            while switcher.do():
+                try:
+                    data=self.generateMetric()
+                    self.queuepool.outbox.put({"header":{},"data":data})
+                except:
+                    self.queuepool.outbox.waitUntilPutAllowed()
+                    self.queuepool.outbox.put({"header":{},"data":data})
                 sleep(self.sleep)
         elif self.mode == "random" and self.total > 0:
             for counter in xrange(self.total):
-                self.sendData({"header":{},"data":self.generateMetric()},"inbox")
+                self.queuepool.outbox.put({"header":{},"data":self.generateMetric()})
                 sleep(self.sleep)
             self.logging.info("Reached total number of metrics (%s) to produce. Will not produce more."%(self.total))
         elif self.mode == "sequential":
             for host in xrange(self.host):
                 for metric in xrange(self.metric):
                     data = self.generateMetric(host="host_%s"%(host), metric="metric_%s"%(metric))
-                    self.sendData({"header":{},"data":data},"inbox")
+                    self.queuepool.outbox.put({"header":{},"data":data})
                     sleep(self.sleep)
             self.logging.info("Reached total number of metrics (%s) to produce. Will not produce more."%(self.host*self.metric))
 
@@ -139,6 +148,3 @@ class Hammer(PrimitiveActor):
 
     def __getHostname(self):
         return "host_%s"%(randint(0,self.host))
-
-    def shutdown(self):
-        self.logging.info('Shutdown')

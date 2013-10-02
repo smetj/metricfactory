@@ -22,12 +22,12 @@
 #
 #
 
-from wishbone.toolkit import PrimitiveActor
+from wishbone import Actor
 
-class Graphite(PrimitiveActor):
+class Graphite(Actor):
     '''**Encodes the data field into a Graphite format.**
 
-    Encodes the doc["data"] field into a Graphite formatted string ready to dump
+    Encodes the event["data"] field into a Graphite formatted string ready to dump
     into Graphite.
 
     Parameters:
@@ -43,21 +43,18 @@ class Graphite(PrimitiveActor):
     '''
 
     def __init__(self, name, prefix=''):
-        PrimitiveActor.__init__(self, name)
+        Actor.__init__(self, name)
         self.name=name
         self.prefix=prefix
 
-    def consume(self,doc):
+    def consume(self,event):
         #system.loadavg_1min 1.05 1257715746
-        if doc["data"]["type"] == "nagios":
-            if doc["data"]["tags"][1] == "hostcheck":
-                doc["data"]="%s.%s.hostcheck.%s %s %s\n"%(self.prefix,doc["data"]["source"],doc["data"]["name"],doc["data"]["value"],doc["data"]["time"])
+        if event["data"]["type"] == "nagios":
+            if event["data"]["tags"][1] == "hostcheck":
+                event["data"]="%s.%s.hostcheck.%s %s %s\n"%(self.prefix,event["data"]["source"],event["data"]["name"],event["data"]["value"],event["data"]["time"])
             else:
-                doc["data"]="%s.%s.%s.%s %s %s\n"%(self.prefix,doc["data"]["source"],doc["data"]["tags"][1],doc["data"]["name"],doc["data"]["value"],doc["data"]["time"])
+                event["data"]="%s.%s.%s.%s %s %s\n"%(self.prefix,event["data"]["source"],event["data"]["tags"][1],event["data"]["name"],event["data"]["value"],event["data"]["time"])
 
         else:
-            doc["data"]="%s.%s.%s %s %s\n"%(self.prefix,doc["data"]["source"],doc["data"]["name"],doc["data"]["value"],doc["data"]["time"])
-        self.putData(doc)
-
-    def shutdown(self):
-        self.logging.info('Shutdown')
+            event["data"]="%s.%s.%s %s %s\n"%(self.prefix,event["data"]["source"],event["data"]["name"],event["data"]["value"],event["data"]["time"])
+        self.queuepool.outbox.put(event)

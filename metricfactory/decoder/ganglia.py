@@ -26,7 +26,7 @@
 # Michael Rose https://bitbucket.org/michaelrose/ganglia-xdr-parser/src/da033e2bed3e/ganglia_xdr_parser.py
 # Patrick Debois https://gist.github.com/1376525
 
-from wishbone.toolkit import PrimitiveActor
+from wishbone import Actor
 import xdrlib
 from time import time
 from gevent.monkey import patch_time;patch_time()
@@ -37,7 +37,7 @@ class DecodeGangliaException(Exception):
     def __str__(self):
         return repr(self.value)
 
-class Ganglia(PrimitiveActor):
+class Ganglia(Actor):
     '''**DecodeGanglia is MetricFactory module which decodes Ganglia metrics into
     a MetricFactory format.***
 
@@ -66,7 +66,7 @@ class Ganglia(PrimitiveActor):
     '''
 
     def __init__(self, name, meta=False):
-        PrimitiveActor.__init__(self, name)
+        Actor.__init__(self, name)
         self.name=name
         self.meta=meta
 
@@ -93,9 +93,6 @@ class Ganglia(PrimitiveActor):
             self.logging.debug ( "Failed to decode package. Reason: %s" %err )
         except DecodeGangliaException as err:
             self.logging.debug ( err )
-
-    def shutdown(self):
-        self.logging.info('Shutdown')
 
     def doMetaPacket(self, unpacker, version):
         data = {"version":version,
