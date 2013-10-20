@@ -1,7 +1,8 @@
 #!/usr/bin/env python
+#
 # -*- coding: utf-8 -*-
 #
-#  metricfactory
+#  main.py
 #
 #  Copyright 2013 Jelle Smet <development@smetj.net>
 #
@@ -22,16 +23,15 @@
 #
 #
 
-from wishbone.server import BootStrap
+from wishbone.bootstrap import BootStrap
 
 def main():
-    BootStrap(name="MetricFactory",
-        description="Accept, process and submit metrics.",
-        version="0.1",
-        author="Jelle Smet",
-        support="",
-        groups=["metricfactory.encoder","metricfactory.decoder","metricfactory.filter","metricfactory.test"]
-    )
+    try:
+        BootStrap()
+    except Exception as err:
+        sys.stderr.write("Failed to bootstrap instance.  Reason: %s\n"%(err))
+        sys.stderr.flush()
+        sys.exit(1)
 
 if __name__ == '__main__':
     main()

@@ -69,6 +69,7 @@ setup(
     include_package_data=True,
 
     entry_points={
+        'console_scripts': ['metricfactory = metricfactory.main:main'],
         'metricfactory.encoder': [
         "graphite = metricfactory.encoder:Graphite"
         ],
