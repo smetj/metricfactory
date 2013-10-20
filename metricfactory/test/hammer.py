@@ -29,6 +29,7 @@ import string
 from gevent import sleep
 from gevent.socket import gethostname
 from gevent import spawn
+from gevent.event import Event
 
 class Hammer(Actor):
     '''**Generates random metric events.**
@@ -37,114 +38,110 @@ class Hammer(Actor):
     testing.  Metrics are generated in batches.  One batch is a list of
     dictionaries.
 
-    metric = {  "type":string,
-                "time":time(),
-                "source":string,
-                "name":string,
-                "value":string,
-                "units":string,
-                "tags":list
-                }
+    (time, type, source, name, value, unit, (tag1, tag2))
 
     Parameters:
 
         - name (str):       The instance name when initiated.
 
-        - total (int):      The total number of metrics to produce in random mode. Indefinite when 0.
-                            (default 0)
+        - batch (int):      The number of batches to produce.  0 is unlimited.
+                            (default: 0)
 
-        - mode (str):       The mode to run in. Options: sequential, random.
-                            (default random)
+        - batch_size(int):  The number of unique data sets in 1 batch.
+                            (default: 1)
 
-        - sleep (float):    The time in seconds to wait between generating each metric.
-                            (default 0)
+        - set_size(int):    The number of unique metrics per set.
+                            (default: 1)
 
-        - host (int):       The maximum suffix number for the source host: host_
-                            (default 0)
-
-        - metric (int):     The maximum suffix number for the metric name: metric_
-                            (default 0)
+        - sleep (float):    The time to sleep in between generating batches.
+                            (default: 1)
 
         - value (int):      The maximum of the randomized metric value (default 1).
+
+        - prefix (str):     The top level name.
+                            (default: hammer)
 
     Queues:
 
         - outbox:    Generated metrics.
 
-    When mode is random, for each metric a random hostname and metric name is
-    chosen within the boundaries set by *host* and *metric*. You can control
-    the total number of metrics using the *total* parameter.
 
-    When mode is sequential, X unique metrics are generate per N hosts, where
-    X is the *metric* parameter and N is the *host* parameter.  In this case
-    each metric will only contain 1 value, effectively creating X * Y unique
-    metrics.  In this case the total parameter has no meaning.
+    Metrics names will have following name structure:
+
+        <prefix>.set_<batch_size>.metric_<set_size>
+
+
+        hammer.set_0.metric_0 34534 1382173076
+
     '''
 
-    def __init__(self, name, total=0, mode="random", sleep=0, host=0, metric=0, value=1):
-        Actor.__init__(self, name)
+    def __init__(self, name, batch=0, batch_size=1, set_size=1, sleep=1, value=1, prefix='hammer'):
+        Actor.__init__(self, name, setupbasic=False)
         self.name=name
-        self.total=total
-        self.mode=mode
-        self.sleep=float(sleep)
-        self.host=int(host)
-        self.metric=int(metric)
-        self.value=int(value)
 
-    def consume(self,doc):
-        #Nothing to do since we do not expect incoming data.
-        pass
+        self.batch=batch
+        self.batch_size=batch_size
+        self.set_size=set_size
+        self.sleep_value=float(sleep)
+        self.value=value
+        self.prefix=prefix
+
+        if batch == 0:
+            self.generateNextBatchAllowed = self.__returnTrue
+        else:
+            self.generateNextBatchAllowed = self.__evaluateCounter
+
+        if sleep == 0:
+            self.doSleep = self.__doNoSleep
+        else:
+            self.doSleep = self.__doSleep
+
+        self.pause = Event()
+        self.pause.set()
 
     def preHook(self):
-        spawn(self.doGenerate)
+        spawn(self.generate)
 
-    def doGenerate(self):
-        if self.mode == "random" and self.total == 0:
-            switcher = self.getContextSwitcher(100, self.loop)
-            while switcher.do():
-                try:
-                    data=self.generateMetric()
-                    self.queuepool.outbox.put({"header":{},"data":data})
-                except:
-                    self.queuepool.outbox.waitUntilPutAllowed()
-                    self.queuepool.outbox.put({"header":{},"data":data})
-                sleep(self.sleep)
-        elif self.mode == "random" and self.total > 0:
-            for counter in xrange(self.total):
-                self.queuepool.outbox.put({"header":{},"data":self.generateMetric()})
-                sleep(self.sleep)
-            self.logging.info("Reached total number of metrics (%s) to produce. Will not produce more."%(self.total))
-        elif self.mode == "sequential":
-            for host in xrange(self.host):
-                for metric in xrange(self.metric):
-                    data = self.generateMetric(host="host_%s"%(host), metric="metric_%s"%(metric))
-                    self.queuepool.outbox.put({"header":{},"data":data})
-                    sleep(self.sleep)
-            self.logging.info("Reached total number of metrics (%s) to produce. Will not produce more."%(self.host*self.metric))
+    def generate(self):
+        switcher = self.getContextSwitcher(100)
+        batch_counter=0
+        while switcher():
+            if self.generateNextBatchAllowed(batch_counter) == True:
+                for event in self.generateBatch():
+                    self.queuepool.outbox.put({"header":{}, "data":event})
+                batch_counter+=1
+            else:
+                break
+            self.doSleep()
+        self.logging.warn('Reached the batch_size of %s.  Not generating any further metrics.'%(self.batch_size))
 
-    def generateMetric(self, host=None, metric=None, value=None):
-        if host == None:
-            host = self.__getHostname()
-        if metric == None:
-            metric = self.__getMetricName()
-        if value == None:
-            value = self.__getValue()
+    def generateBatch(self):
+        #(time, type, source, name, value, unit, (tag1, tag2))
+        #(1381002603.726132, 'wishbone', 'wishbone', 'queue.outbox.in_rate', 0, '', ())
+        timestamp = time()
 
-        return {
-        "type":"metricfactoryHammer",
-        "time":time(),
-        "source":host,
-        "name":metric,
-        "value":value,
-        "unit":"hits",
-        "tags":[]
-        }
+        for set_name in xrange(self.batch_size):
+            for metric_name in xrange(self.set_size):
+                self.pause.wait()
+                yield (timestamp, 'test', 'hammer', '%s.set_%s.metric_%s'%(self.prefix, set_name, metric_name), randint(0, self.value), '', () )
 
-    def __getValue(self):
-        return randint(0,self.value)
+    def __evaluateCounter(self, counter):
+        if counter == self.batch:
+            return False
+        else:
+            return True
 
-    def __getMetricName(self):
-        return "metric_%s"%(randint(0, self.metric))
+    def __returnTrue(self, counter):
+        return True
 
-    def __getHostname(self):
-        return "host_%s"%(randint(0,self.host))
+    def __doSleep(self):
+        sleep(self.sleep_value)
+
+    def __doNoSleep(self):
+        pass
+
+    def enableThrottling(self):
+        self.pause.clear()
+
+    def disableThrottling(self):
+        self.pause.set()
