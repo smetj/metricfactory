@@ -100,6 +100,7 @@ class Hammer(Actor):
         self.pause.set()
 
     def preHook(self):
+        sleep(1)
         spawn(self.generate)
 
     def generate(self):
@@ -108,7 +109,11 @@ class Hammer(Actor):
         while switcher():
             if self.generateNextBatchAllowed(batch_counter) == True:
                 for event in self.generateBatch():
-                    self.queuepool.outbox.put({"header":{}, "data":event})
+                    try:
+                        self.queuepool.outbox.put({"header":{}, "data":event})
+                    except:
+                        self.queuepool.outbox.waitUntilPutAllowed()
+                        self.queuepool.outbox.put({"header":{}, "data":event})
                 batch_counter+=1
             else:
                 break
@@ -138,7 +143,7 @@ class Hammer(Actor):
         sleep(self.sleep_value)
 
     def __doNoSleep(self):
-        pass
+        sleep(0.0001)
 
     def enableThrottling(self):
         self.pause.clear()
