@@ -96,14 +96,21 @@ class ModGearman(Actor):
                 units=value_unit.group(2)
             else:
                 units=''
+            tags=[]
+            tags.append(self.__filter(metadata.get("servicecheckcommand",metadata.get("hostcheckcommand",""))))
+            if "servicedesc" in metadata:
+                tags.append(self.__filter(metadata["servicedesc"]))
+                tags.append("servicecheck")
+            else:
+                tags.append("hostcheck")
+
             yield ({"type":"nagios",
                     "time":metadata["timet"],
                     "source":self.__filter(metadata["hostname"]),
                     "name":self.__filter(key),
                     "value":value,
                     "units":units,
-                    "tags":[self.__filter(metadata.get("servicecheckcommand",metadata.get("hostcheckcommand",""))),
-                        self.__filter(metadata.get("servicedesc","hostcheck"))]
+                    "tags":tags
                     })
 
     def __filter(self, name):
@@ -115,4 +122,5 @@ class ModGearman(Actor):
 
         name=name.replace("'",'')
         name=name.replace('"','')
+        name=name.replace('!(null)','')
         return name.lower()
