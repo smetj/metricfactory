@@ -74,11 +74,11 @@ setup(
         "graphite = metricfactory.encoder:Graphite"
         ],
         'metricfactory.decoder': [
-        "ModGearman = metricfactory.decoder:ModGearman",
+        "modgearman = metricfactory.decoder:ModGearman",
         "ganglia = metricfactory.decoder:Ganglia"
         ],
         'metricfactory.filter': [
-        "metricFilter = metricfactory.filter:MetricFilter"
+        "metricfilter = metricfactory.filter:MetricFilter"
         ],
         'metricfactory.test': [
         "hammer = metricfactory.test:Hammer"
