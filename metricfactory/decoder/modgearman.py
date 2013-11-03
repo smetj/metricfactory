@@ -101,17 +101,13 @@ class ModGearman(Actor):
             if "servicedesc" in metadata:
                 tags.append(self.__filter(metadata["servicedesc"]))
                 tags.append("servicecheck")
+                basename=self.__filter(metadata["servicedesc"])
             else:
+                basename="hostcheck"
                 tags.append("hostcheck")
 
-            yield ({"type":"nagios",
-                    "time":metadata["timet"],
-                    "source":self.__filter(metadata["hostname"]),
-                    "name":self.__filter(key),
-                    "value":value,
-                    "units":units,
-                    "tags":tags
-                    })
+            #(1381002603.726132, 'wishbone', 'hostname', 'queue.outbox.in_rate', 0, '', ())
+            yield((metadata["timet"], "nagios", self.__filter(metadata["hostname"]), "%s.%s"%(basename, self.__filter(key)), value, units, tuple(tags)))
 
     def __filter(self, name):
         '''Filter out problematic characters.
@@ -123,4 +119,6 @@ class ModGearman(Actor):
         name=name.replace("'",'')
         name=name.replace('"','')
         name=name.replace('!(null)','')
+        name=name.replace(" ","_")
+        name=name.replace("/","_")
         return name.lower()
