@@ -24,6 +24,7 @@
 #
 
 from wishbone.bootstrap import BootStrap
+import sys
 
 def main():
     try:
