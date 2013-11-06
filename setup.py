@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-#  untitled.py
+#  setup.py
 #
-#  Copyright 2012 Jelle Smet <development@smetj.net>
+#  Copyright 2013 Jelle Smet <development@smetj.net>
 #
 #  This program is free software; you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
@@ -22,52 +22,59 @@
 #
 #
 
-PROJECT = 'metricfactory'
-
-# Change docs/sphinx/conf.py too!
-VERSION = '0.2'
-
 from setuptools import setup, find_packages
-
-from distutils.util import convert_path
-from fnmatch import fnmatchcase
-import os
+from setuptools.command.test import test as TestCommand
 import sys
+
+PROJECT = 'metricfactory'
+VERSION = '0.2.1'
+install_requires=['wishbone']
 
 try:
     long_description = open('README.rst', 'rt').read()
 except IOError:
     long_description = ''
 
+class PyTest(TestCommand):
+    def finalize_options(self):
+        TestCommand.finalize_options(self)
+        self.test_args = []
+        self.test_suite = True
+
+    def run_tests(self):
+        import pytest
+        errcode = pytest.main(self.test_args)
+        sys.exit(errcode)
+
 setup(
     name=PROJECT,
     version=VERSION,
 
-    description='Consume, process and submit metrics.',
+    description='A set of Wishbone modules to consume, process and submit metrics.',
     long_description=long_description,
 
     author='Jelle Smet',
     author_email='development@smetj.net',
 
     url='https://github.com/smetj/metricfactory',
-    download_url='https://github.com/smetj/metricfactory/tarball',
+    download_url='https://github.com/smetj/metricfactory/tarball/master',
 
-    classifiers=['Development Status :: 3 - Alpha',
-                 'License :: OSI Approved :: Apache Software License',
+    classifiers=['Development Status :: 4 - Beta',
+                 'License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)',
                  'Programming Language :: Python',
                  'Programming Language :: Python :: 2',
+                 'Programming Language :: Python :: 2.6',
                  'Programming Language :: Python :: 2.7',
-                 'Intended Audience :: System Engineers',
-                 'Environment :: Console',
+                 'Intended Audience :: Developers',
+                 'Intended Audience :: System Administrators',
                  ],
+    platforms=['Linux'],
 
-    platforms=['Any'],
-    install_requires = ['distribute', 'wishbone'],
-
+    provides=[],
+    install_requires=install_requires,
     namespace_packages=[],
     packages=find_packages(),
-    include_package_data=True,
-
+    zip_safe=False,
     entry_points={
         'console_scripts': ['metricfactory = metricfactory.main:main'],
         'metricfactory.encoder': [
@@ -84,7 +91,5 @@ setup(
         "hammer = metricfactory.test:Hammer"
         ]
 
-    },
-
-    zip_safe=False,
+    }
 )
