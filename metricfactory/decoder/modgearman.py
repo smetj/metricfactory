@@ -45,7 +45,6 @@ class ModGearman(Actor):
     Parameters:
 
         - name (str):   The instance name when initiated.
-        - meta (bool):  When True, drops data with version 128
 
     Queues:
 
@@ -57,25 +56,35 @@ class ModGearman(Actor):
         Actor.__init__(self, name)
         self.regex=re.compile('(.*?)(\D+)$')
 
-    def consume(self,doc):
+    def consume(self,event):
         try:
-            for metric in self.decodeMetrics(doc["data"]):
-                self.sendData({"header":doc["header"],"data":metric})
+            for metric in self.decodeMetrics(event["data"]):
+                self.queuepool.outbox.put({"header":event["header"],"data":metric})
         except Exception as err:
             self.logging.warn('Malformatted performance data received. Reason: %s'%(err))
 
     def decodeMetrics(self, data):
+
+        #DATATYPE::SERVICEPERFDATA\t
+        #TIMET::1383478571\t
+        #HOSTNAME::dev-umi-master-101.flatns.net\t
+        #SERVICEDESC::Default Processes\t
+        #SERVICEPERFDATA::check_multi::check_multi::plugins=5 time=0.058422\t
+        #SERVICECHECKCOMMAND::check:nagios.multicheck.status\t
+        #SERVICESTATE::0\t
+        #SERVICESTATETYPE::1\n\n\n\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00
+
         metadata={}
         for element in data.split("\t"):
-            (key, value) = element.split('::')
-            metadata[key.lower()]=value
+            parts = re.search('(.*?)::(.*)',element)
+            metadata[parts.group(1).lower()]=parts.group(2)
 
         if 'serviceperfdata' in metadata:
             metric_type = "serviceperfdata"
         if 'hostperfdata' in metadata:
             metric_type = "hostperfdata"
 
-        for metric in metadata[metric_type].split(" "):
+        for metric in re.sub('.*::', '', metadata[metric_type]).split(' '):
             (key,value)=metric.split('=')
             value=value.split(";")[0]
             value_unit = self.regex.search(value)
@@ -87,15 +96,18 @@ class ModGearman(Actor):
                 units=value_unit.group(2)
             else:
                 units=''
-            yield ({"type":"nagios",
-                    "time":metadata["timet"],
-                    "source":self.__filter(metadata["hostname"]),
-                    "name":self.__filter(key),
-                    "value":value,
-                    "units":units,
-                    "tags":[self.__filter(metadata.get("servicecheckcommand",metadata.get("hostcheckcommand",""))),
-                        self.__filter(metadata.get("servicedesc","hostcheck"))]
-                    })
+            tags=[]
+            tags.append(self.__filter(metadata.get("servicecheckcommand",metadata.get("hostcheckcommand",""))))
+            if "servicedesc" in metadata:
+                tags.append(self.__filter(metadata["servicedesc"]))
+                tags.append("servicecheck")
+                basename=self.__filter(metadata["servicedesc"])
+            else:
+                basename="hostcheck"
+                tags.append("hostcheck")
+
+            #(1381002603.726132, 'wishbone', 'hostname', 'queue.outbox.in_rate', 0, '', ())
+            yield((metadata["timet"], "nagios", self.__filter(metadata["hostname"]), "%s.%s"%(basename, self.__filter(key)), value, units, tuple(tags)))
 
     def __filter(self, name):
         '''Filter out problematic characters.
@@ -106,7 +118,7 @@ class ModGearman(Actor):
 
         name=name.replace("'",'')
         name=name.replace('"','')
-        name=name.replace('.','_')
-        name=name.replace(' ','_')
-
+        name=name.replace('!(null)','')
+        name=name.replace(" ","_")
+        name=name.replace("/","_")
         return name.lower()
