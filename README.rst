@@ -32,10 +32,16 @@ For more information see https://wishbone.readthedocs.org/en/latest
 Installation
 ------------
 
-Download from Github and run:
+From Pypi:
 
+    $ easy_install metricfactory
+
+
+From Github:
+
+    $ git clone https://github.com/smetj/metricfactory
+    $ cd metricfactory
     $ python setup.py install
-
 
 
 Usage
