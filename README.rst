@@ -34,14 +34,14 @@ Installation
 
 From Pypi:
 
-    $ easy_install metricfactory
+    | $ easy_install metricfactory
 
 
 From Github:
 
-    $ git clone https://github.com/smetj/metricfactory
-    $ cd metricfactory
-    $ python setup.py install
+    | $ git clone https://github.com/smetj/metricfactory
+    | $ cd metricfactory
+    | $ python setup.py install
 
 
 Usage
