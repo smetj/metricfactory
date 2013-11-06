@@ -25,7 +25,7 @@
 PROJECT = 'metricfactory'
 
 # Change docs/sphinx/conf.py too!
-VERSION = '0.2'
+VERSION = '0.2.1'
 
 from setuptools import setup, find_packages
 
