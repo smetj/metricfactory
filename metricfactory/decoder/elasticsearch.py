@@ -38,7 +38,9 @@ class Elasticsearch(Actor):
 
     Parameters:
 
-        - name (str):    The instance name.
+        - name (str):           The instance name.
+        - source(str):          Allows to set the source manually.
+                                Default: elasticsearch
 
     Queues:
 
@@ -49,11 +51,18 @@ class Elasticsearch(Actor):
 
         _cluster/nodes/stats
         _stats
+
+    The _cluster/nodes/stats has a cluster_name value but the _stats
+    resource not.  That's why we can override this.  Maybe this can
+    be derived automatically if following enhancement request is
+    accepted and implemented:
+    https://github.com/elasticsearch/elasticsearch/issues/4179
     '''
 
-    def __init__(self, name):
+    def __init__(self, name, source="elasticsearch"):
         Actor.__init__(self, name, setupbasic=True)
         self.logging.info("Initialized")
+        self.source=source
 
     def consume(self, event):
 
@@ -68,6 +77,7 @@ class Elasticsearch(Actor):
             self.queuepool.outbox.waitUntillPutAllowed()
 
     def extractMetrics(self, data):
+        timestamp=time()
         #(time, type, source, name, value, unit, (tag1, tag2))
         #(1381002603.726132, 'wishbone', 'hostname', 'queue.outbox.in_rate', 0, '', ())
         if "cluster_name" in data:
@@ -75,20 +85,19 @@ class Elasticsearch(Actor):
             for node in data["nodes"]:
                 for item in data["nodes"][node]["indices"]:
                     for metric in data["nodes"][node]["indices"][item]:
-                        yield (data["nodes"][node]["timestamp"],
+                        yield (timestamp,
                             "elasticsearch",
-                            data["nodes"][node]["hostname"],
-                            "indices.%s.%s"%(item, metric),
+                            self.source,
+                            "%s.indices.%s.%s"%(data["nodes"][node]["hostname"], item, metric),
                             data["nodes"][node]["indices"][item][metric],
                             '',
                             ())
         elif "ok" in data:
             #We got metrics from /_stats
-            timestamp=time()
             for metric in data["_shards"]:
                 yield (timestamp,
                         "elasticsearch",
-                        "cluster",
+                        self.source,
                         "_shards.%s"%(metric),
                         data["_shards"][metric],
                         '',
@@ -98,7 +107,7 @@ class Elasticsearch(Actor):
                     for metric in data["_all"][section][item]:
                         yield (timestamp,
                                 "elasticsearch",
-                                "cluster",
+                                self.source,
                                 "_all.%s.%s.%s"%(section, item, metric),
                                 data["_all"][section][item][metric],
                                 '',
@@ -109,7 +118,7 @@ class Elasticsearch(Actor):
                         for metric in data["indices"][index][item][part]:
                             yield (timestamp,
                                     "elasticsearch",
-                                    "cluster",
+                                    self.source,
                                     "indices.%s.%s.%s.%s"%(index.replace(".","_"), item, part, metric),
                                     data["indices"][index][item][part][metric],
                                     '',
