@@ -27,7 +27,7 @@ from setuptools.command.test import test as TestCommand
 import sys
 
 PROJECT = 'metricfactory'
-VERSION = '0.2.1'
+VERSION = '0.2.2'
 install_requires=['wishbone']
 
 try:
