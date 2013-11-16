@@ -77,7 +77,6 @@ class Elasticsearch(Actor):
             self.queuepool.outbox.waitUntillPutAllowed()
 
     def extractMetrics(self, data):
-        timestamp=time()
         #(time, type, source, name, value, unit, (tag1, tag2))
         #(1381002603.726132, 'wishbone', 'hostname', 'queue.outbox.in_rate', 0, '', ())
         if "cluster_name" in data:
@@ -85,7 +84,7 @@ class Elasticsearch(Actor):
             for node in data["nodes"]:
                 for item in data["nodes"][node]["indices"]:
                     for metric in data["nodes"][node]["indices"][item]:
-                        yield (timestamp,
+                        yield (data["nodes"][node]["timestamp"]/1000,
                             "elasticsearch",
                             self.source,
                             "%s.indices.%s.%s"%(data["nodes"][node]["hostname"], item, metric),
@@ -93,6 +92,7 @@ class Elasticsearch(Actor):
                             '',
                             ())
         elif "ok" in data:
+            timestamp=time()
             #We got metrics from /_stats
             for metric in data["_shards"]:
                 yield (timestamp,
