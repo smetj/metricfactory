@@ -49,15 +49,15 @@ Usage
 
 Have a look at the available modules:
 
-    $ wishbone list --group metricfactory.encoder
-    $ wishbone list --group metricfactory.decoder
-    $ wishbone list --group metricfactory.test
-    $ wishbone list
+    | $ metricfactory list --group metricfactory.encoder
+    | $ metricfactory list --group metricfactory.decoder
+    | $ metricfactory list --group metricfactory.test
+    | $ metricfactory list
 
 
 To start 2 parallel instances of a server in the background:
 
-    $ wishbone start --config /path/to/boostrapfile.yaml --instances 2
+    | $ metricfactory start --config /path/to/boostrapfile.yaml --instances 2
 
 
 Examples
