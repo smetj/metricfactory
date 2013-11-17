@@ -83,7 +83,8 @@ setup(
         'metricfactory.decoder': [
         "modgearman = metricfactory.decoder:ModGearman",
         "ganglia = metricfactory.decoder:Ganglia",
-        "elasticsearch = metricfactory.decoder:Elasticsearch"
+        "elasticsearch = metricfactory.decoder:Elasticsearch",
+        "rabbitmq = metricfactory.decoder:RabbitMQ"
         ],
         'metricfactory.filter': [
         "metricfilter = metricfactory.filter:MetricFilter"

@@ -25,3 +25,4 @@
 from ganglia import Ganglia
 from modgearman import ModGearman
 from elasticsearch import Elasticsearch
+from rabbitmq import RabbitMQ
