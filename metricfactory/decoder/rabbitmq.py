@@ -73,15 +73,71 @@ class RabbitMQ(Actor):
     def extractMetrics(self, data):
         #(time, type, source, name, value, unit, (tag1, tag2))
         #(1381002603.726132, 'wishbone', 'hostname', 'queue.outbox.in_rate', 0, '', ())
+        if len(data) == 0:
+            return
+
         timestamp=time()
         if "os_pid" in data[0]:
             #Got metrics from /api/nodes
             for node in data:
                 for metric in [ "fd_used","fd_total","sockets_used","sockets_total","mem_used","mem_limit","disk_free_limit","disk_free","proc_used","proc_total","uptime","run_queue","processors" ]:
-                    yield (time(),
+                    yield (timestamp,
                         "rabbitmq",
                         self.source,
-                        "%s.%s"%(node["name"].split("@")[1], metric),
-                            node[metric],
+                        "node.%s.%s"%(node["name"].split("@")[1], metric),
+                        node[metric],
+                        '',
+                        ())
+
+        elif "backing_queue_status" in data[0]:
+            #Got metrics from /api/queues
+            for queue in data:
+                for metric in [ "consumers", "memory"]:
+                    yield (timestamp,
+                        "rabbitmq",
+                        self.source,
+                        "queue.%s.%s.%s"%(queue["vhost"],queue["name"], metric),
+                        queue[metric],
+                        '',
+                        ())
+                for metric in [ "q1","q2","q3","q4","len",
+                                "pending_acks","ram_msg_count","ram_ack_count","next_seq_id","persistent_count",
+                                "avg_ingress_rate","avg_egress_rate","avg_ack_ingress_rate","avg_ack_egress_rate"]:
+                    yield (timestamp,
+                        "rabbitmq",
+                        self.source,
+                        "queue.%s.%s.%s"%(queue["vhost"],queue["name"], metric),
+                        queue["backing_queue_status"][metric],
+                        '',
+                        ())
+
+        elif data[1]["name"] == "amq.direct":
+            #got metrics from /api/exchanges
+            for exchange in data:
+                if "message_stats" in exchange :
+                    if exchange["name"]=="":
+                        exchange["name"]="amq"
+                    for metric in [ "publish_in","publish_out" ]:
+                        yield (timestamp,
+                            "rabbitmq",
+                            self.source,
+                            "exchange.%s.%s.%s"%(exchange["vhost"],exchange["name"], metric),
+                            exchange["message_stats"][metric],
+                            '',
+                            ())
+                    for metric in exchange["message_stats"]["publish_in_details"]:
+                        yield (timestamp,
+                            "rabbitmq",
+                            self.source,
+                            "exchange.%s.%s.publish_in.%s"%(exchange["vhost"],exchange["name"], metric),
+                            exchange["message_stats"]["publish_in_details"][metric],
+                            '',
+                            ())
+                    for metric in exchange["message_stats"]["publish_out_details"]:
+                        yield (timestamp,
+                            "rabbitmq",
+                            self.source,
+                            "exchange.%s.%s.publish_out.%s"%(exchange["vhost"],exchange["name"], metric),
+                            exchange["message_stats"]["publish_out_details"][metric],
                             '',
                             ())
