@@ -42,17 +42,9 @@ class Ganglia(Actor):
     a MetricFactory format.***
 
     Receives xdr formatted data coming from a Ganglia client and decodes it
-    into a MetricFactory format.
+    into Wishbone format.
 
-    metric = {  "type":string,
-                "time":time(),
-                "source":string,
-                "name":string,
-                "value":string,
-                "units":string,
-                "tags":list
-                }
-
+    (1381002603.726132, 'hadoop', 'hostname', 'queue.outbox.in_rate', 0, '', ())
 
     Parameters:
 
@@ -84,11 +76,11 @@ class Ganglia(Actor):
         else:
             raise Exception("Unknown version number: %s"%version)
 
-    def consume(self,doc):
+    def consume(self,event):
         try:
-            data = self.parsePacket(doc["data"])
-            doc['data']={ "type":"ganglia","time":time(),"source":data["hostname"],"name":data["metric_name"],"value":data["value"],"units":None,"tags":[] }
-            self.putData(doc)
+            data = self.parsePacket(event["data"])
+            event['data']=(time(), "ganglia", data["hostname"], data["metric_name"], data["value"], "", ())
+            self.queuepool.outbox.put(event)
         except Exception as err:
             self.logging.debug ( "Failed to decode package. Reason: %s" %err )
         except DecodeGangliaException as err:
