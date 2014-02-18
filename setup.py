@@ -28,7 +28,7 @@ import sys
 
 PROJECT = 'metricfactory'
 VERSION = '0.2.3'
-install_requires=['wishbone']
+install_requires=['wishbone', 'gearman', 'crypto', ]
 
 try:
     long_description = open('README.rst', 'rt').read()
