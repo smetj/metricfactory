@@ -39,30 +39,34 @@ class Elasticsearch(Actor):
     Parameters:
 
         - name (str):           The instance name.
+
         - source(str):          Allows to set the source manually.
                                 Default: elasticsearch
+
+        - indices(list):        The indices to include when polling
+                                /_stats
+                                Default: []
 
     Queues:
 
         - inbox:    Incoming events.
         - outbox:   Outgoing events.
 
-    ES can be queried using following resources:
+    This module deals with JSON documents coming from:
 
-        _cluster/nodes/stats
-        _stats
+        - /_stats
+        - /_cluster/stats
+        - /_nodes/stats
 
-    The _cluster/nodes/stats has a cluster_name value but the _stats
-    resource not.  That's why we can override this.  Maybe this can
-    be derived automatically if following enhancement request is
-    accepted and implemented:
-    https://github.com/elasticsearch/elasticsearch/issues/4179
+    Feeding this module any other stats data will not work.
+    Requires Elasticsearch >= 1.0.0
     '''
 
-    def __init__(self, name, source="elasticsearch"):
+    def __init__(self, name, source="elasticsearch", indices=[ "logstash-2014.01.17" ]):
         Actor.__init__(self, name, setupbasic=True)
         self.logging.info("Initialized")
         self.source=source
+        self.indices=indices
 
     def consume(self, event):
 
@@ -76,50 +80,45 @@ class Elasticsearch(Actor):
             self.queuepool.inbox.rescue(event)
             self.queuepool.outbox.waitUntillPutAllowed()
 
+    def __formatMetric(self, timestamp, name, value):
+        return (timestamp, "elasticsearch", self.source, name, value, '', ())
+
+    def __crawlDictionary(self, timestamp, dictionary,  breadcrumbs=""):
+
+        for k, v in dictionary.iteritems():
+            b = "%s.%s"%(breadcrumbs, k)
+            if isinstance(v, dict):
+                 for metric in self.__crawlDictionary(timestamp, v, b):
+                    yield metric
+            else:
+                yield self.__formatMetric(timestamp, b, v)
+
     def extractMetrics(self, data):
         #(time, type, source, name, value, unit, (tag1, tag2))
         #(1381002603.726132, 'wishbone', 'hostname', 'queue.outbox.in_rate', 0, '', ())
-        if "cluster_name" in data:
-            #we got metrics from _cluster/nodes/stats
-            for node in data["nodes"]:
-                for item in data["nodes"][node]["indices"]:
-                    for metric in data["nodes"][node]["indices"][item]:
-                        yield (data["nodes"][node]["timestamp"]/1000,
-                            "elasticsearch",
-                            self.source,
-                            "%s.indices.%s.%s"%(data["nodes"][node]["hostname"], item, metric),
-                            data["nodes"][node]["indices"][item][metric],
-                            '',
-                            ())
-        elif "ok" in data:
+
+        if all (False for k in [ "_shards", "_all", "indices" ] if not k in data):
+            #We have received metrics from /_stats
+
             timestamp=time()
-            #We got metrics from /_stats
-            for metric in data["_shards"]:
-                yield (timestamp,
-                        "elasticsearch",
-                        self.source,
-                        "_shards.%s"%(metric),
-                        data["_shards"][metric],
-                        '',
-                        ())
-            for section in data["_all"]:
-                for item in data["_all"][section]:
-                    for metric in data["_all"][section][item]:
-                        yield (timestamp,
-                                "elasticsearch",
-                                self.source,
-                                "_all.%s.%s.%s"%(section, item, metric),
-                                data["_all"][section][item][metric],
-                                '',
-                                ())
-            for index in data["indices"]:
-                for item in data["indices"][index]:
-                    for part in data["indices"][index][item]:
-                        for metric in data["indices"][index][item][part]:
-                            yield (timestamp,
-                                    "elasticsearch",
-                                    self.source,
-                                    "indices.%s.%s.%s.%s"%(index.replace(".","_"), item, part, metric),
-                                    data["indices"][index][item][part][metric],
-                                    '',
-                                    ())
+            for element in ["_shards","_all"]:
+                for metric in self.__crawlDictionary(timestamp, data[element], element):
+                    yield metric
+            for index in self.indices:
+                try:
+                    for metric in self.__crawlDictionary(timestamp, data["indices"][index], index):
+                        yield metric
+                except KeyError:
+                    self.logging.error("Index %s does not exist."%(metric))
+        elif all (False for k in [ "timestamp", "cluster_name", "status", "indices", "nodes" ] if not k in data):
+            #We have received metrics from /_cluster/stats
+            for element in ["indices","nodes"]:
+                for metric in self.__crawlDictionary(data["timestamp"], data[element], "cluster.%s"%(element)):
+                    yield metric
+        elif all (False for k in [ "cluster_name", "nodes" ] if not k in data):
+            #We have received metrics from /_nodes/stats
+            for node in data["nodes"]:
+                for metric in self.__crawlDictionary(data["nodes"][node]["timestamp"], data["nodes"][node]["indices"], "nodes.%s"%(data["nodes"][node]["name"])):
+                    yield metric
+        else:
+            self.logging.error("Unrecognized dataset.  Are you sure you have polled the right resource?")
