@@ -115,12 +115,12 @@ class Elasticsearch(Actor):
         elif all (False for k in [ "timestamp", "cluster_name", "status", "indices", "nodes" ] if not k in data):
             #We have received metrics from /_cluster/stats
             for element in ["indices","nodes"]:
-                for metric in self.__crawlDictionary(data["timestamp"], data[element], "cluster.%s"%(element)):
+                for metric in self.__crawlDictionary(data["timestamp"]/1000, data[element], "cluster.%s"%(element)):
                     yield metric
         elif all (False for k in [ "cluster_name", "nodes" ] if not k in data):
             #We have received metrics from /_nodes/stats
             for node in data["nodes"]:
-                for metric in self.__crawlDictionary(data["nodes"][node]["timestamp"], data["nodes"][node]["indices"], "nodes.%s"%(data["nodes"][node]["name"])):
+                for metric in self.__crawlDictionary(data["nodes"][node]["timestamp"]/1000, data["nodes"][node]["indices"], "nodes.%s"%(data["nodes"][node]["name"])):
                     yield metric
         else:
             self.logging.error("Unrecognized dataset.  Are you sure you have polled the right resource?")
