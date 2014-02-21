@@ -62,7 +62,7 @@ class Elasticsearch(Actor):
     Requires Elasticsearch >= 1.0.0
     '''
 
-    def __init__(self, name, source="elasticsearch", indices=[ "logstash-2014.01.17" ]):
+    def __init__(self, name, source="elasticsearch", indices=[]):
         Actor.__init__(self, name, setupbasic=True)
         self.logging.info("Initialized")
         self.source=source
@@ -90,6 +90,8 @@ class Elasticsearch(Actor):
             if isinstance(v, dict):
                  for metric in self.__crawlDictionary(timestamp, v, b):
                     yield metric
+            elif isinstance(v, list):
+                continue
             else:
                 yield self.__formatMetric(timestamp, b, v)
 
@@ -102,7 +104,7 @@ class Elasticsearch(Actor):
 
             timestamp=time()
             for element in ["_shards","_all"]:
-                for metric in self.__crawlDictionary(timestamp, data[element], element):
+                for metric in self.__crawlDictionary(timestamp, data[element], "indices.%s"%(element)):
                     yield metric
             for index in self.indices:
                 try:
