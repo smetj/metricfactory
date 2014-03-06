@@ -84,7 +84,8 @@ setup(
         "modgearman = metricfactory.decoder:ModGearman",
         "ganglia = metricfactory.decoder:Ganglia",
         "elasticsearch = metricfactory.decoder:Elasticsearch",
-        "rabbitmq = metricfactory.decoder:RabbitMQ"
+        "rabbitmq = metricfactory.decoder:RabbitMQ",
+        "rsyslog = metricfactory.decoder:Rsyslog"
         ],
         'metricfactory.filter': [
         "metricfilter = metricfactory.filter:MetricFilter"
