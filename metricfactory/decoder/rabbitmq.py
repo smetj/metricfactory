@@ -39,6 +39,7 @@ class RabbitMQ(Actor):
     Parameters:
 
         - name (str):           The instance name.
+
         - source(str):          Allows to set the source manually.
                                 Default: rabbitmq
 
@@ -85,7 +86,7 @@ class RabbitMQ(Actor):
                         "rabbitmq",
                         self.source,
                         "node.%s.%s"%(node["name"].split("@")[1], metric),
-                        node[metric],
+                        node.get(metric,0),
                         '',
                         ())
 
@@ -96,8 +97,8 @@ class RabbitMQ(Actor):
                     yield (timestamp,
                         "rabbitmq",
                         self.source,
-                        "queue.%s.%s.%s"%(queue["vhost"],queue["name"], metric),
-                        queue[metric],
+                        "%s.queue.%s.%s"%(queue["vhost"],queue["name"], metric),
+                        queue.get(metric,0),
                         '',
                         ())
                 for metric in [ "q1","q2","q3","q4","len",
@@ -106,8 +107,8 @@ class RabbitMQ(Actor):
                     yield (timestamp,
                         "rabbitmq",
                         self.source,
-                        "queue.%s.%s.%s"%(queue["vhost"],queue["name"], metric),
-                        queue["backing_queue_status"][metric],
+                        "%s.queue.%s.%s"%(queue["vhost"],queue["name"], metric),
+                        queue["backing_queue_status"].get(metric,0),
                         '',
                         ())
 
@@ -115,29 +116,21 @@ class RabbitMQ(Actor):
             #got metrics from /api/exchanges
             for exchange in data:
                 if "message_stats" in exchange :
-                    if exchange["name"]=="":
-                        exchange["name"]="amq"
-                    for metric in [ "publish_in","publish_out" ]:
-                        yield (timestamp,
-                            "rabbitmq",
-                            self.source,
-                            "exchange.%s.%s.%s"%(exchange["vhost"],exchange["name"], metric),
-                            exchange["message_stats"][metric],
-                            '',
-                            ())
-                    for metric in exchange["message_stats"]["publish_in_details"]:
-                        yield (timestamp,
-                            "rabbitmq",
-                            self.source,
-                            "exchange.%s.%s.publish_in.%s"%(exchange["vhost"],exchange["name"], metric),
-                            exchange["message_stats"]["publish_in_details"][metric],
-                            '',
-                            ())
-                    for metric in exchange["message_stats"]["publish_out_details"]:
-                        yield (timestamp,
-                            "rabbitmq",
-                            self.source,
-                            "exchange.%s.%s.publish_out.%s"%(exchange["vhost"],exchange["name"], metric),
-                            exchange["message_stats"]["publish_out_details"][metric],
-                            '',
-                            ())
+                    for metric in self.__crawlDictionary(timestamp, exchange, "%s.exchange.%s"%(exchange["vhost"],exchange["name"])):
+                        yield metric
+
+
+    def __formatMetric(self, timestamp, name, value):
+        return (timestamp, "elasticsearch", self.source, name, value, '', ())
+
+    def __crawlDictionary(self, timestamp, dictionary,  breadcrumbs=""):
+
+        for k, v in dictionary.iteritems():
+            b = "%s.%s"%(breadcrumbs, k)
+            if isinstance(v, dict):
+                 for metric in self.__crawlDictionary(timestamp, v, b):
+                    yield metric
+            elif isinstance(v, list):
+                continue
+            else:
+                yield self.__formatMetric(timestamp, b, v)
