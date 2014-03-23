@@ -93,31 +93,14 @@ class RabbitMQ(Actor):
         elif "backing_queue_status" in data[0]:
             #Got metrics from /api/queues
             for queue in data:
-                for metric in [ "consumers", "memory"]:
-                    yield (timestamp,
-                        "rabbitmq",
-                        self.source,
-                        "%s.queue.%s.%s"%(queue["vhost"],queue["name"], metric),
-                        queue.get(metric,0),
-                        '',
-                        ())
-                for metric in [ "q1","q2","q3","q4","len",
-                                "pending_acks","ram_msg_count","ram_ack_count","next_seq_id","persistent_count",
-                                "avg_ingress_rate","avg_egress_rate","avg_ack_ingress_rate","avg_ack_egress_rate"]:
-                    yield (timestamp,
-                        "rabbitmq",
-                        self.source,
-                        "%s.queue.%s.%s"%(queue["vhost"],queue["name"], metric),
-                        queue["backing_queue_status"].get(metric,0),
-                        '',
-                        ())
+                for metric in self.__crawlDictionary(timestamp, queue, "%s.queue.%s"%(queue["vhost"],queue["name"])):
+                        yield metric
 
         elif data[1]["name"] == "amq.direct":
             #got metrics from /api/exchanges
             for exchange in data:
-                if "message_stats" in exchange :
-                    for metric in self.__crawlDictionary(timestamp, exchange, "%s.exchange.%s"%(exchange["vhost"],exchange["name"])):
-                        yield metric
+                for metric in self.__crawlDictionary(timestamp, exchange, "%s.exchange.%s"%(exchange["vhost"],exchange["name"])):
+                    yield metric
 
 
     def __formatMetric(self, timestamp, name, value):
@@ -132,5 +115,5 @@ class RabbitMQ(Actor):
                     yield metric
             elif isinstance(v, list):
                 continue
-            else:
+            elif isinstance(v, (int, long, float, complex)):
                 yield self.__formatMetric(timestamp, b, v)

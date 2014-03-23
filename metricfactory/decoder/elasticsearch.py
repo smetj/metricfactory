@@ -99,10 +99,9 @@ class Elasticsearch(Actor):
         #(time, type, source, name, value, unit, (tag1, tag2))
         #(1381002603.726132, 'wishbone', 'hostname', 'queue.outbox.in_rate', 0, '', ())
 
+        timestamp=time()
         if all (False for k in [ "_shards", "_all", "indices" ] if not k in data):
             #We have received metrics from /_stats
-
-            timestamp=time()
             for element in ["_shards","_all"]:
                 for metric in self.__crawlDictionary(timestamp, data[element], "indices.%s"%(element)):
                     yield metric
@@ -117,10 +116,16 @@ class Elasticsearch(Actor):
             for element in ["indices","nodes"]:
                 for metric in self.__crawlDictionary(data["timestamp"]/1000, data[element], "cluster.%s"%(element)):
                     yield metric
+
         elif all (False for k in [ "cluster_name", "nodes" ] if not k in data):
             #We have received metrics from /_nodes/stats
             for node in data["nodes"]:
-                for metric in self.__crawlDictionary(data["nodes"][node]["timestamp"]/1000, data["nodes"][node]["indices"], "nodes.%s"%(data["nodes"][node]["name"])):
+                for metric in self.__crawlDictionary(data["nodes"][node]["timestamp"]/1000, data["nodes"][node], "nodes.%s"%(data["nodes"][node]["name"])):
                     yield metric
+
+        elif all (False for k in [ "cluster_name", "status", "timed_out" ] if not k in data):
+            #We have received metrics from /_cluster/health
+            for metric in self.__crawlDictionary(timestamp, data, "cluster.health"):
+                yield metric
         else:
             self.logging.error("Unrecognized dataset.  Are you sure you have polled the right resource?")
