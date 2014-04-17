@@ -70,6 +70,8 @@ class RabbitMQ(Actor):
         except QueueLocked:
             self.queuepool.inbox.rescue(event)
             self.queuepool.outbox.waitUntillPutAllowed()
+        except Exception as err:
+            self.logging.error("Unexpected error encountered possibly due to the event format. Event dropped.  Reason: %s"%(err))
 
     def extractMetrics(self, data):
         #(time, type, source, name, value, unit, (tag1, tag2))
@@ -99,6 +101,8 @@ class RabbitMQ(Actor):
         elif data[1]["name"] == "amq.direct":
             #got metrics from /api/exchanges
             for exchange in data:
+                if exchange["name"] == "":
+                    exchange["name"] = "_AMQP_default_"
                 for metric in self.__crawlDictionary(timestamp, exchange, "%s.exchange.%s"%(exchange["vhost"],exchange["name"])):
                     yield metric
 
