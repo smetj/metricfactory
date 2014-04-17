@@ -79,6 +79,8 @@ class Elasticsearch(Actor):
         except QueueLocked:
             self.queuepool.inbox.rescue(event)
             self.queuepool.outbox.waitUntillPutAllowed()
+        except Exception as err:
+            self.logging.error("Unexpected error encountered possibly due to the event format. Event dropped.  Reason: %s"%(err))
 
     def __formatMetric(self, timestamp, name, value):
         return (timestamp, "elasticsearch", self.source, name, value, '', ())
@@ -92,7 +94,7 @@ class Elasticsearch(Actor):
                     yield metric
             elif isinstance(v, list):
                 continue
-            else:
+            elif isinstance(v, (int, long, float, complex)):
                 yield self.__formatMetric(timestamp, b, v)
 
     def extractMetrics(self, data):
