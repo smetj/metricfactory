@@ -26,7 +26,9 @@ from wishbone import Actor
 import re
 import sys
 
+
 class ModGearman(Actor):
+
     '''**A module to decodes Mod_Gearman metrics into the default format.**
 
     Receives Nagios spool directory formatted data and decodes it into a
@@ -41,10 +43,17 @@ class ModGearman(Actor):
                 "tags":list
                 }
 
-
     Parameters:
 
-        - name (str):   The instance name when initiated.
+        -   name(str)
+
+            The instance name when initiated.
+
+        - sanitize_hostname(bool)(False)
+
+            If True converts "." to "_".
+            Might be practical when FQDN hostnames mess up the namespace
+            such as Graphite.
 
     Queues:
 
@@ -52,32 +61,39 @@ class ModGearman(Actor):
         - outbox:   Outgoing events in MetricFactory format.
     '''
 
-    def __init__(self, name):
+    def __init__(self, name, sanitize_hostname=False):
         Actor.__init__(self, name)
-        self.regex=re.compile('(.*?)(\D+)$')
+        self.regex = re.compile('(.*?)(\D+)$')
+        self.sanitize_hostname = sanitize_hostname
 
-    def consume(self,event):
+    def preeHook(self):
+        if self.sanitize_hostname:
+            self.replacePeriod = self.__doReplacePeriod
+        else:
+            self.replacePeriod = self.__doNoReplacePeriod
+
+    def consume(self, event):
         try:
             for metric in self.decodeMetrics(event["data"]):
-                self.queuepool.outbox.put({"header":event["header"],"data":metric})
+                self.queuepool.outbox.put({"header": event["header"], "data": metric})
         except Exception as err:
-            self.logging.warn('Malformatted performance data received. Reason: %s'%(err))
+            self.logging.warn('Malformatted performance data received. Reason: %s' % (err))
 
     def decodeMetrics(self, data):
 
-        #DATATYPE::SERVICEPERFDATA\t
-        #TIMET::1383478571\t
-        #HOSTNAME::dev-umi-master-101.flatns.net\t
-        #SERVICEDESC::Default Processes\t
-        #SERVICEPERFDATA::check_multi::check_multi::plugins=5 time=0.058422\t
-        #SERVICECHECKCOMMAND::check:nagios.multicheck.status\t
-        #SERVICESTATE::0\t
-        #SERVICESTATETYPE::1\n\n\n\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00
+        # DATATYPE::SERVICEPERFDATA\t
+        # TIMET::1383478571\t
+        # HOSTNAME::dev-umi-master-101.flatns.net\t
+        # SERVICEDESC::Default Processes\t
+        # SERVICEPERFDATA::check_multi::check_multi::plugins=5 time=0.058422\t
+        # SERVICECHECKCOMMAND::check:nagios.multicheck.status\t
+        # SERVICESTATE::0\t
+        # SERVICESTATETYPE::1\n\n\n\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00
 
-        metadata={}
+        metadata = {}
         for element in data.split("\t"):
-            parts = re.search('(.*?)::(.*)',element)
-            metadata[parts.group(1).lower()]=parts.group(2)
+            parts = re.search('(.*?)::(.*)', element)
+            metadata[parts.group(1).lower()] = parts.group(2)
 
         if 'serviceperfdata' in metadata:
             metric_type = "serviceperfdata"
@@ -85,29 +101,29 @@ class ModGearman(Actor):
             metric_type = "hostperfdata"
 
         for metric in re.sub('.*::', '', metadata[metric_type]).split(' '):
-            (key,value)=metric.split('=')
-            value=value.split(";")[0]
+            (key, value) = metric.split('=')
+            value = value.split(";")[0]
             value_unit = self.regex.search(value)
 
-            if value_unit == None:
-                units=''
+            if value_unit is None:
+                units = ''
             elif value_unit.group(2):
-                value=value_unit.group(1)
-                units=value_unit.group(2)
+                value = value_unit.group(1)
+                units = value_unit.group(2)
             else:
-                units=''
-            tags=[]
-            tags.append(self.__filter(metadata.get("servicecheckcommand",metadata.get("hostcheckcommand",""))))
+                units = ''
+            tags = []
+            tags.append(self.__filter(metadata.get("servicecheckcommand", metadata.get("hostcheckcommand", ""))))
             if "servicedesc" in metadata:
                 tags.append(self.__filter(metadata["servicedesc"]))
                 tags.append("servicecheck")
-                basename=self.__filter(metadata["servicedesc"])
+                basename = self.__filter(metadata["servicedesc"])
             else:
-                basename="hostcheck"
+                basename = "hostcheck"
                 tags.append("hostcheck")
 
-            #(1381002603.726132, 'wishbone', 'hostname', 'queue.outbox.in_rate', 0, '', ())
-            yield((metadata["timet"], "nagios", self.__filter(metadata["hostname"]), "%s.%s"%(basename, self.__filter(key)), value, units, tuple(tags)))
+            # (1381002603.726132, 'wishbone', 'hostname', 'queue.outbox.in_rate', 0, '', ())
+            yield((metadata["timet"], "nagios", self.replacePerdiod(self.__filter(metadata["hostname"])), "%s.%s" % (basename, self.__filter(key)), value, units, tuple(tags)))
 
     def __filter(self, name):
         '''Filter out problematic characters.
@@ -116,9 +132,15 @@ class ModGearman(Actor):
         from a bootstrap file and most likely become a separate module.
         '''
 
-        name=name.replace("'",'')
-        name=name.replace('"','')
-        name=name.replace('!(null)','')
-        name=name.replace(" ","_")
-        name=name.replace("/","_")
+        name = name.replace("'", '')
+        name = name.replace('"', '')
+        name = name.replace('!(null)', '')
+        name = name.replace(" ", "_")
+        name = name.replace("/", "_")
         return name.lower()
+
+    def __doReplacePeriod(self, data):
+        return data.replace(".", "_")
+
+    def __doNoReplacePeriod(self, data):
+        return data
