@@ -66,7 +66,7 @@ class ModGearman(Actor):
         self.regex = re.compile('(.*?)(\D+)$')
         self.sanitize_hostname = sanitize_hostname
 
-    def preeHook(self):
+    def preHook(self):
         if self.sanitize_hostname:
             self.replacePeriod = self.__doReplacePeriod
         else:
@@ -123,7 +123,7 @@ class ModGearman(Actor):
                 tags.append("hostcheck")
 
             # (1381002603.726132, 'wishbone', 'hostname', 'queue.outbox.in_rate', 0, '', ())
-            yield((metadata["timet"], "nagios", self.replacePerdiod(self.__filter(metadata["hostname"])), "%s.%s" % (basename, self.__filter(key)), value, units, tuple(tags)))
+            yield((metadata["timet"], "nagios", self.replacePeriod(self.__filter(metadata["hostname"])), "%s.%s" % (basename, self.__filter(key)), value, units, tuple(tags)))
 
     def __filter(self, name):
         '''Filter out problematic characters.
