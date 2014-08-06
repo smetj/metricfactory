@@ -24,11 +24,14 @@
 
 from wishbone import Actor
 from wishbone.errors import QueueLocked
-from gevent import monkey;monkey.patch_time()
+from gevent import monkey
+monkey.patch_time()
 from time import time
 import json
 
+
 class RabbitMQ(Actor):
+
     '''**Decode RabbitMQ metrics.**
 
     This module takes a JSON formatted coming from a RabbitMQ
@@ -57,55 +60,57 @@ class RabbitMQ(Actor):
     def __init__(self, name, source="rabbitmq"):
         Actor.__init__(self, name, setupbasic=True)
         self.logging.info("Initialized")
-        self.source=source
+        self.source = source
 
     def consume(self, event):
 
         try:
-            data=json.loads(event["data"])
+            data = json.loads(event["data"])
             for metric in self.extractMetrics(data):
-                self.queuepool.outbox.put({"header":event["header"], "data":metric})
+                self.queuepool.outbox.put(
+                    {"header": event["header"], "data": metric})
         except ValueError as err:
-            self.logging.error("Problem reading JSON data.  Reason: %s"%(err))
+            self.logging.error(
+                "Problem reading JSON data.  Reason: %s" % (err))
         except QueueLocked:
             self.queuepool.inbox.rescue(event)
             self.queuepool.outbox.waitUntillPutAllowed()
         except Exception as err:
-            self.logging.error("Unexpected error encountered possibly due to the event format. Event dropped.  Reason: %s"%(err))
+            self.logging.error(
+                "Unexpected error encountered possibly due to the event format. Event dropped.  Reason: %s" % (err))
 
     def extractMetrics(self, data):
-        #(time, type, source, name, value, unit, (tag1, tag2))
-        #(1381002603.726132, 'wishbone', 'hostname', 'queue.outbox.in_rate', 0, '', ())
+        # (time, type, source, name, value, unit, (tag1, tag2))
+        # (1381002603.726132, 'wishbone', 'hostname', 'queue.outbox.in_rate', 0, '', ())
         if len(data) == 0:
             return
 
-        timestamp=time()
+        timestamp = time()
         if "os_pid" in data[0]:
-            #Got metrics from /api/nodes
+            # Got metrics from /api/nodes
             for node in data:
-                for metric in [ "fd_used","fd_total","sockets_used","sockets_total","mem_used","mem_limit","disk_free_limit","disk_free","proc_used","proc_total","uptime","run_queue","processors" ]:
+                for metric in ["fd_used", "fd_total", "sockets_used", "sockets_total", "mem_used", "mem_limit", "disk_free_limit", "disk_free", "proc_used", "proc_total", "uptime", "run_queue", "processors"]:
                     yield (timestamp,
-                        "rabbitmq",
-                        self.source,
-                        "node.%s.%s"%(node["name"].split("@")[1], metric),
-                        node.get(metric,0),
-                        '',
-                        ())
+                           "rabbitmq",
+                           self.source,
+                           "node.%s.%s" % (node["name"].split("@")[1], metric),
+                           node.get(metric, 0),
+                           '',
+                           ())
 
         elif "backing_queue_status" in data[0]:
-            #Got metrics from /api/queues
+            # Got metrics from /api/queues
             for queue in data:
-                for metric in self.__crawlDictionary(timestamp, queue, "%s.queue.%s"%(queue["vhost"],queue["name"])):
-                        yield metric
+                for metric in self.__crawlDictionary(timestamp, queue, "%s.queue.%s" % (queue["vhost"], queue["name"])):
+                    yield metric
 
         elif data[1]["name"] == "amq.direct":
-            #got metrics from /api/exchanges
+            # got metrics from /api/exchanges
             for exchange in data:
                 if exchange["name"] == "":
                     exchange["name"] = "_AMQP_default_"
-                for metric in self.__crawlDictionary(timestamp, exchange, "%s.exchange.%s"%(exchange["vhost"],exchange["name"])):
+                for metric in self.__crawlDictionary(timestamp, exchange, "%s.exchange.%s" % (exchange["vhost"], exchange["name"])):
                     yield metric
-
 
     def __formatMetric(self, timestamp, name, value):
         return (timestamp, "elasticsearch", self.source, name, value, '', ())
@@ -113,9 +118,9 @@ class RabbitMQ(Actor):
     def __crawlDictionary(self, timestamp, dictionary,  breadcrumbs=""):
 
         for k, v in dictionary.iteritems():
-            b = "%s.%s"%(breadcrumbs, k)
+            b = "%s.%s" % (breadcrumbs, k)
             if isinstance(v, dict):
-                 for metric in self.__crawlDictionary(timestamp, v, b):
+                for metric in self.__crawlDictionary(timestamp, v, b):
                     yield metric
             elif isinstance(v, list):
                 continue
