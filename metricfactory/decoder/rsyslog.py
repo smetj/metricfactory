@@ -29,7 +29,9 @@ from time import time
 import json
 import re
 
+
 class Rsyslog(Actor):
+
     '''**Decode Rsyslog metrics.**
 
     This module takes JSON formatted metrics coming from Rsyslog and
@@ -70,20 +72,21 @@ class Rsyslog(Actor):
     # 1394101824 {"name":"logstash_logs[DA]","size":0,"enqueued":0,"full":0,"discarded.full":0,"discarded.nf":0,"maxqsize":0}
     # 1394101824 {"name":"logstash_logs","size":0,"enqueued":3,"full":0,"discarded.full":0,"discarded.nf":0,"maxqsize":1}
     # 1394101824 {"name":"main Q","size":10,"enqueued":9001,"full":0,"discarded.full":0,"discarded.nf":0,"maxqsize":12}
-    # 1394101824 {"name":"imudp(w0)","called.recvmmsg":0,"called.recvmsg":0,"msgs.received":0}
-
+    # 1394101824
+    # {"name":"imudp(w0)","called.recvmmsg":0,"called.recvmsg":0,"msgs.received":0}
 
     def __init__(self, name, source="rsyslog"):
 
         Actor.__init__(self, name, setupbasic=True)
         self.logging.info("Initialized")
-        self.source=source
-        self.prev_metric={}
+        self.source = source
+        self.prev_metric = {}
 
     def consume(self, event):
         try:
             for metric in self.__extractMetrics(event["data"].rstrip()):
-                self.queuepool.outbox.put({"header":event["header"], "data":metric})
+                self.queuepool.outbox.put(
+                    {"header": event["header"], "data": metric})
         except QueueLocked:
             self.queuepool.inbox.rescue(event)
             self.queuepool.outbox.waitUntillPutAllowed()
@@ -96,9 +99,10 @@ class Rsyslog(Actor):
             for (name, value) in self.__extractIndividualMetric(hostname, j):
                 yield self.__formatMetric(time, name, value)
                 rate = self.__getRate(time, name, value)
-                yield self.__formatMetric(time, name.replace('.total','.rate'), rate)
+                yield self.__formatMetric(time, name.replace('.total', '.rate'), rate)
         except Exception as err:
-            self.logging.warning("Bad Rsyslog metric format.  Check the Rsyslog template to use.  Reason: %s"%(err))
+            self.logging.warning(
+                "Bad Rsyslog metric format.  Check the Rsyslog template to use.  Reason: %s" % (err))
 
     def __extractIndividualMetric(self, hostname, data):
 
@@ -106,30 +110,29 @@ class Rsyslog(Actor):
         keys.remove("name")
         name = self.__scrubMetricName(data["name"])
         for item in keys:
-            yield "%s.%s.%s.total"%(hostname, name, item.replace('.','')), data[item]
+            yield "%s.%s.%s.total" % (hostname, name, item.replace('.', '')), data[item]
 
     def __scrubMetricName(self, name):
         for character in [")", "*", ":", "]", " "]:
-            name = name.replace(character,"")
-        for character in ["(","["]:
-            name = name.replace(character,"_")
+            name = name.replace(character, "")
+        for character in ["(", "["]:
+            name = name.replace(character, "_")
         return name.lower()
 
     def __getRate(self, time, name, value):
         try:
             previous_value = self.prev_metric[name]["value"]
-            previous_time  = self.prev_metric[name]["time"]
+            previous_time = self.prev_metric[name]["time"]
         except KeyError:
-            self.prev_metric[name]={"value":value,"time":time}
+            self.prev_metric[name] = {"value": value, "time": time}
             return 0
         else:
-            self.prev_metric[name]={"value":value,"time":time}
+            self.prev_metric[name] = {"value": value, "time": time}
             try:
-                return (int(value) - int(previous_value))/(int(time) - int(previous_time))
+                return (int(value) - int(previous_value)) / (int(time) - int(previous_time))
             except ZeroDivisionError:
                 return 0
 
     def __formatMetric(self, timestamp, name, value):
 
         return ((timestamp, "rsyslog", self.source, name, value, '', ()))
-
