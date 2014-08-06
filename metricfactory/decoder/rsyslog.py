@@ -98,8 +98,6 @@ class Rsyslog(Actor):
             j = json.loads(j)
             for (name, value) in self.__extractIndividualMetric(hostname, j):
                 yield self.__formatMetric(time, name, value)
-                rate = self.__getRate(time, name, value)
-                yield self.__formatMetric(time, name.replace('.total', '.rate'), rate)
         except Exception as err:
             self.logging.warning(
                 "Bad Rsyslog metric format.  Check the Rsyslog template to use.  Reason: %s" % (err))
@@ -118,20 +116,6 @@ class Rsyslog(Actor):
         for character in ["(", "["]:
             name = name.replace(character, "_")
         return name.lower()
-
-    def __getRate(self, time, name, value):
-        try:
-            previous_value = self.prev_metric[name]["value"]
-            previous_time = self.prev_metric[name]["time"]
-        except KeyError:
-            self.prev_metric[name] = {"value": value, "time": time}
-            return 0
-        else:
-            self.prev_metric[name] = {"value": value, "time": time}
-            try:
-                return (int(value) - int(previous_value)) / (int(time) - int(previous_time))
-            except ZeroDivisionError:
-                return 0
 
     def __formatMetric(self, timestamp, name, value):
 
