@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-#       decodeganglia.py
+#       ganglia.py
 #
-#       Copyright 2013 Jelle Smet development@smetj.net
+#       Copyright 2014 Jelle Smet development@smetj.net
 #
 #       This program is free software; you can redistribute it and/or modify
 #       it under the terms of the GNU General Public License as published by
@@ -53,19 +53,34 @@ class Ganglia(Actor):
 
     Parameters:
 
-        - name (str):   The instance name when initiated.
-        - meta (bool):  When True, drops data with version 128
+        - name(str)
+           |  The name of the module.
+
+        - size(int)
+           |  The default max length of each queue.
+
+        - frequency(int)
+           |  The frequency in seconds to generate metrics.
+
+        - meta(bool)(False)
+           |  When True, drops data with version 128.
+
 
     Queues:
 
         - inbox:    Incoming events.
+
         - outbox:   Outgoing events.
+
     '''
 
-    def __init__(self, name, meta=False):
-        Actor.__init__(self, name)
+    def __init__(self, name, size=100, frequency=1, meta=False):
+        Actor.__init__(self, name, size, frequency)
         self.name = name
         self.meta = meta
+        self.pool.createQueue("inbox")
+        self.pool.createQueue("outbox")
+        self.registerConsumer(self.consume, "inbox")
 
     def parsePacket(self, data):
         unpacker = xdrlib.Unpacker(data)
@@ -89,8 +104,10 @@ class Ganglia(Actor):
             self.queuepool.outbox.put(event)
         except Exception as err:
             self.logging.debug("Failed to decode package. Reason: %s" % err)
+            raise
         except DecodeGangliaException as err:
             self.logging.debug(err)
+            raise
 
     def doMetaPacket(self, unpacker, version):
         data = {"version": version,
