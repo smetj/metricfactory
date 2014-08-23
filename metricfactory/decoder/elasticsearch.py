@@ -3,7 +3,7 @@
 #
 #       skeleton.py
 #
-#       Copyright 2013 Jelle Smet development@smetj.net
+#       Copyright 2014 Jelle Smet development@smetj.net
 #
 #       This program is free software; you can redistribute it and/or modify
 #       it under the terms of the GNU General Public License as published by
@@ -39,22 +39,6 @@ class Elasticsearch(Actor):
 
     The name of the metric will be point delimited.
 
-    Parameters:
-
-        - name (str):           The instance name.
-
-        - source(str):          Allows to set the source manually.
-                                Default: elasticsearch
-
-        - indices(list):        The indices to include when polling
-                                /_stats
-                                Default: []
-
-    Queues:
-
-        - inbox:    Incoming events.
-        - outbox:   Outgoing events.
-
     This module deals with JSON documents coming from:
 
         - /_stats
@@ -63,10 +47,37 @@ class Elasticsearch(Actor):
 
     Feeding this module any other stats data will not work.
     Requires Elasticsearch >= 1.0.0
+
+    Parameters:
+
+        - name(str)
+           |  The name of the module.
+
+        - size(int)
+           |  The default max length of each queue.
+
+        - frequency(int)
+           |  The frequency in seconds to generate metrics.
+
+        - source(str)("elasticsearch")
+           |  Allows to set the source manually.
+
+        - indices(list)([])
+           |  The indices to include when polling /_stats
+
+
+    Queues:
+
+        - inbox:    Incoming events.
+
+        - outbox:   Outgoing events.
     '''
 
-    def __init__(self, name, source="elasticsearch", indices=[]):
-        Actor.__init__(self, name, setupbasic=True)
+    def __init__(self, name, size=100, frequency=1, source="elasticsearch", indices=[]):
+        Actor.__init__(self, name, size, frequency)
+        self.pool.createQueue("inbox")
+        self.pool.createQueue("outbox")
+        self.registerConsumer(self.consume, "inbox")
         self.logging.info("Initialized")
         self.source = source
         self.indices = indices
@@ -76,17 +87,13 @@ class Elasticsearch(Actor):
         try:
             data = json.loads(event["data"])
             for metric in self.extractMetrics(data):
-                self.queuepool.outbox.put(
-                    {"header": event["header"], "data": metric})
+                self.submit({"header": event["header"], "data": metric}, self.pool.queue.outbox)
         except ValueError as err:
-            self.logging.error(
-                "Problem reading JSON data.  Reason: %s" % (err))
-        except QueueLocked:
-            self.queuepool.inbox.rescue(event)
-            self.queuepool.outbox.waitUntillPutAllowed()
+            self.logging.error("Problem reading JSON data.  Reason: %s" % (err))
+            raise
         except Exception as err:
-            self.logging.error(
-                "Unexpected error encountered possibly due to the event format. Event dropped.  Reason: %s" % (err))
+            self.logging.error("Unexpected error encountered possibly due to the event format. Event dropped.  Reason: %s" % (err))
+            raise
 
     def __formatMetric(self, timestamp, name, value):
         return (timestamp, "elasticsearch", self.source, name, value, '', ())
@@ -136,5 +143,4 @@ class Elasticsearch(Actor):
             for metric in self.__crawlDictionary(timestamp, data, "cluster.health"):
                 yield metric
         else:
-            self.logging.error(
-                "Unrecognized dataset.  Are you sure you have polled the right resource?")
+            self.logging.error("Unrecognized dataset.  Are you sure you have polled the right resource?")
