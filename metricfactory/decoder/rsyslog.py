@@ -71,23 +71,22 @@ class Rsyslog(Actor):
     # 1394101824 {"name":"imuxsock","submitted":2,"ratelimit.discarded":0,"ratelimit.numratelimiters":2}
     # 1394101824 {"name":"stats","processed":8988,"failed":0,"suspended":0,"suspended.duration":0,"resumed":0}
     # 1394101824 {"name":"local_logs","processed":3,"failed":0,"suspended":0,"suspended.duration":0,"resumed":0}
-    # 1394101824 {"name":"logstash_logs","processed":3,"failed":0,"suspended":0,"suspended.duration":0,"resumed":0}
-    # 1394101824 {"name":"imudp(*:514)","submitted":0}
-    # 1394101824 {"name":"imudp(*:514)","submitted":0}
-    # 1394101824 {"name":"imtcp(514)","submitted":0}
-    # 1394101824 {"name":"resource-usage","utime":153976,"stime":280957,"maxrss":4068,"minflt":437,"majflt":0,"inblock":0,"oublock":24,"nvcsw":1591,"nivcsw":15}
-    # 1394101824 {"name":"logstash_logs[DA]","size":0,"enqueued":0,"full":0,"discarded.full":0,"discarded.nf":0,"maxqsize":0}
-    # 1394101824 {"name":"logstash_logs","size":0,"enqueued":3,"full":0,"discarded.full":0,"discarded.nf":0,"maxqsize":1}
-    # 1394101824 {"name":"main Q","size":10,"enqueued":9001,"full":0,"discarded.full":0,"discarded.nf":0,"maxqsize":12}
-    # 1394101824
-    # {"name":"imudp(w0)","called.recvmmsg":0,"called.recvmsg":0,"msgs.received":0}
+    # 1394101824 indigo {"name":"logstash_logs","processed":3,"failed":0,"suspended":0,"suspended.duration":0,"resumed":0}
+    # 1394101824 indigo {"name":"imudp(*:514)","submitted":0}
+    # 1394101824 indigo {"name":"imudp(*:514)","submitted":0}
+    # 1394101824 indigo {"name":"imtcp(514)","submitted":0}
+    # 1394101824 indigo {"name":"resource-usage","utime":153976,"stime":280957,"maxrss":4068,"minflt":437,"majflt":0,"inblock":0,"oublock":24,"nvcsw":1591,"nivcsw":15}
+    # 1394101824 indigo {"name":"logstash_logs[DA]","size":0,"enqueued":0,"full":0,"discarded.full":0,"discarded.nf":0,"maxqsize":0}
+    # 1394101824 indigo {"name":"logstash_logs","size":0,"enqueued":3,"full":0,"discarded.full":0,"discarded.nf":0,"maxqsize":1}
+    # 1394101824 indigo {"name":"main Q","size":10,"enqueued":9001,"full":0,"discarded.full":0,"discarded.nf":0,"maxqsize":12}
+    # 1394101824 indigo {"name":"imudp(w0)","called.recvmmsg":0,"called.recvmsg":0,"msgs.received":0}
 
     def __init__(self, name, size=100, frequency=1, source="rsyslog"):
 
         Actor.__init__(self, name, size, frequency)
         self.pool.createQueue("inbox")
         self.pool.createQueue("outbox")
-        self.pool.registerConsumer(self.consume, "inbox")
+        self.registerConsumer(self.consume, "inbox")
         self.logging.info("Initialized")
         self.source = source
         self.prev_metric = {}
