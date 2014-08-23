@@ -3,7 +3,7 @@
 #
 #       rsyslog.py
 #
-#       Copyright 2013 Jelle Smet development@smetj.net
+#       Copyright 2014 Jelle Smet development@smetj.net
 #
 #       This program is free software; you can redistribute it and/or modify
 #       it under the terms of the GNU General Public License as published by
@@ -37,17 +37,28 @@ class Rsyslog(Actor):
     This module takes JSON formatted metrics coming from Rsyslog and
     converts them to the metricfactory default format.
 
-    Rsyslog seems to change frequently.  This module is expecting
-    the metrics coming from Rsyslog 7.6.0
-
+    This module has been tested with Rsyslog 7.6.0
     The name of the metric will be point delimited.
+
+    The template to use in Rsyslog is:
+
+    template (name="metrics" type="string" string="%TIMESTAMP:::date-unixtimestamp% %fromhost% %msg%\n")
+
 
     Parameters:
 
-        - name (str):           The instance name.
+        - name(str)
+           |  The name of the module.
 
-        - source(str):          Allows to set the source manually.
-                                Default: rsyslog
+        - size(int)
+           |  The default max length of each queue.
+
+        - frequency(int)
+           |  The frequency in seconds to generate metrics.
+
+
+        - source(str)("rsyslog"):
+           |  Allows to set the source manually.
 
 
     Queues:
@@ -55,10 +66,6 @@ class Rsyslog(Actor):
         - inbox:    Incoming events.
 
         - outbox:   Outgoing events.
-
-    The template to use in Rsyslog is:
-
-    template (name="metrics" type="string" string="%TIMESTAMP:::date-unixtimestamp% %fromhost% %msg%\n")
     '''
 
     # 1394101824 {"name":"imuxsock","submitted":2,"ratelimit.discarded":0,"ratelimit.numratelimiters":2}
@@ -75,21 +82,20 @@ class Rsyslog(Actor):
     # 1394101824
     # {"name":"imudp(w0)","called.recvmmsg":0,"called.recvmsg":0,"msgs.received":0}
 
-    def __init__(self, name, source="rsyslog"):
+    def __init__(self, name, size=100, frequency=1, source="rsyslog"):
 
-        Actor.__init__(self, name, setupbasic=True)
+        Actor.__init__(self, name, size, frequency)
+        self.pool.createQueue("inbox")
+        self.pool.createQueue("outbox")
+        self.pool.registerConsumer(self.consume, "inbox")
         self.logging.info("Initialized")
         self.source = source
         self.prev_metric = {}
 
     def consume(self, event):
-        try:
-            for metric in self.__extractMetrics(event["data"].rstrip()):
-                self.queuepool.outbox.put(
-                    {"header": event["header"], "data": metric})
-        except QueueLocked:
-            self.queuepool.inbox.rescue(event)
-            self.queuepool.outbox.waitUntillPutAllowed()
+
+        for metric in self.__extractMetrics(event["data"].rstrip()):
+            self.submit({"header": event["header"], "data": metric}, self.pool.queue.outbox)
 
     def __extractMetrics(self, data):
 
@@ -99,8 +105,8 @@ class Rsyslog(Actor):
             for (name, value) in self.__extractIndividualMetric(hostname, j):
                 yield self.__formatMetric(time, name, value)
         except Exception as err:
-            self.logging.warning(
-                "Bad Rsyslog metric format.  Check the Rsyslog template to use.  Reason: %s" % (err))
+            self.logging.warning("Bad Rsyslog metric format.  Check the Rsyslog template to use.  Reason: %s" % (err))
+            raise
 
     def __extractIndividualMetric(self, hostname, data):
 
