@@ -45,26 +45,35 @@ class ModGearman(Actor):
 
     Parameters:
 
-        -   name(str)
+        - name(str)
+           |  The name of the module.
 
-            The instance name when initiated.
+        - size(int)
+           |  The default max length of each queue.
+
+        - frequency(int)
+           |  The frequency in seconds to generate metrics.
 
         - sanitize_hostname(bool)(False)
+           |  If True converts "." to "_".
+           |  Might be practical when FQDN hostnames mess up the namespace
+           |  such as Graphite.
 
-            If True converts "." to "_".
-            Might be practical when FQDN hostnames mess up the namespace
-            such as Graphite.
 
     Queues:
 
         - inbox:    Incoming events in Nagios spool directory format.
+
         - outbox:   Outgoing events in MetricFactory format.
     '''
 
-    def __init__(self, name, sanitize_hostname=False):
-        Actor.__init__(self, name)
+    def __init__(self, name, size=100, frequency=1, sanitize_hostname=False):
+        Actor.__init__(self, name, size, frequency)
         self.regex = re.compile('(.*?)(\D+)$')
         self.sanitize_hostname = sanitize_hostname
+        self.pool.createQueue("inbox")
+        self.pool.createQueue("outbox")
+        self.registerConsumer(self.consume, "inbox")
 
     def preHook(self):
         if self.sanitize_hostname:
@@ -75,9 +84,10 @@ class ModGearman(Actor):
     def consume(self, event):
         try:
             for metric in self.decodeMetrics(event["data"]):
-                self.queuepool.outbox.put({"header": event["header"], "data": metric})
+                self.submit({"header": event["header"], "data": metric}, self.pool.queue.outbox)
         except Exception as err:
             self.logging.warn('Malformatted performance data received. Reason: %s' % (err))
+            raise
 
     def decodeMetrics(self, data):
 
