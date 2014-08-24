@@ -80,7 +80,6 @@ setup(
     entry_points={
         'console_scripts': ['metricfactory = metricfactory.main:main'],
         'metricfactory.encoder': [
-            "graphite = metricfactory.encoder:Graphite"
         ],
         'metricfactory.decoder': [
             "modgearman = metricfactory.decoder:ModGearman",
