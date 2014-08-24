@@ -39,45 +39,55 @@ class RabbitMQ(Actor):
 
     The name of the metric will be point delimited.
 
-    Parameters:
-
-        - name (str):           The instance name.
-
-        - source(str):          Allows to set the source manually.
-                                Default: rabbitmq
-
-    Queues:
-
-        - inbox:    Incoming events.
-        - outbox:   Outgoing events.
-
     It's possible to process metrics coming from following resources:
 
         - /api/nodes
         - /api/queues
+
+
+    Parameters:
+
+        - name(str)
+           |  The name of the module.
+
+        - size(int)
+           |  The default max length of each queue.
+
+        - frequency(int)
+           |  The frequency in seconds to generate metrics.
+
+        - source(str)("rabbitmq")
+           |  Allows to set the source manually.
+
+
+    Queues:
+
+        - inbox:    Incoming events.
+
+        - outbox:   Outgoing events.
+
     '''
 
-    def __init__(self, name, source="rabbitmq"):
-        Actor.__init__(self, name, setupbasic=True)
+    def __init__(self, name, size=100, frequency=1, source="rabbitmq"):
+        Actor.__init__(self, name, size, frequency)
         self.logging.info("Initialized")
         self.source = source
+        self.pool.createQueue("inbox")
+        self.pool.createQueue("outbox")
+        self.registerConsumer(self.consume, "inbox")
 
     def consume(self, event):
 
         try:
             data = json.loads(event["data"])
             for metric in self.extractMetrics(data):
-                self.queuepool.outbox.put(
-                    {"header": event["header"], "data": metric})
+                self.submit({"header": event["header"], "data": metric}, self.pool.queue.outbox)
         except ValueError as err:
-            self.logging.error(
-                "Problem reading JSON data.  Reason: %s" % (err))
-        except QueueLocked:
-            self.queuepool.inbox.rescue(event)
-            self.queuepool.outbox.waitUntillPutAllowed()
+            self.logging.error("Problem reading JSON data.  Reason: %s" % (err))
+            raise
         except Exception as err:
-            self.logging.error(
-                "Unexpected error encountered possibly due to the event format. Event dropped.  Reason: %s" % (err))
+            self.logging.error("Unexpected error encountered possibly due to the event format. Event dropped.  Reason: %s" % (err))
+            raise
 
     def extractMetrics(self, data):
         # (time, type, source, name, value, unit, (tag1, tag2))
