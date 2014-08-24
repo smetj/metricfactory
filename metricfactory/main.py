@@ -4,7 +4,7 @@
 #
 #  main.py
 #
-#  Copyright 2013 Jelle Smet <development@smetj.net>
+#  Copyright 2014 Jelle Smet <development@smetj.net>
 #
 #  This program is free software; you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
@@ -26,11 +26,12 @@
 from wishbone.bootstrap import BootStrap
 import sys
 
+
 def main():
     try:
-        BootStrap()
+        BootStrap(include_groups=["metricfactory.encoder", "metricfactory.decoder", "metricfactory.filter", "metricfactory.test"])
     except Exception as err:
-        sys.stderr.write("Failed to bootstrap instance.  Reason: %s\n"%(err))
+        sys.stderr.write("Failed to bootstrap instance.  Reason: %s\n" % (err))
         sys.stderr.flush()
         sys.exit(1)
 
