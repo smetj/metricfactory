@@ -44,7 +44,7 @@ class DecodeGangliaException(Exception):
 class Ganglia(Actor):
 
     '''**DecodeGanglia is MetricFactory module which decodes Ganglia metrics into
-    a MetricFactory format.***
+    a MetricFactory format.**
 
     Receives xdr formatted data coming from a Ganglia client and decodes it
     into Wishbone format.
@@ -101,7 +101,7 @@ class Ganglia(Actor):
             data = self.parsePacket(event["data"])
             event['data'] = (
                 time(), "ganglia", data["hostname"], data["metric_name"], data["value"], "", ())
-            self.queuepool.outbox.put(event)
+            self.submit(event, self.pool.queue.outbox)
         except Exception as err:
             self.logging.debug("Failed to decode package. Reason: %s" % err)
             raise
