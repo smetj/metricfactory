@@ -43,8 +43,7 @@ class DecodeGangliaException(Exception):
 
 class Ganglia(Actor):
 
-    '''**DecodeGanglia is MetricFactory module which decodes Ganglia metrics into
-    a MetricFactory format.**
+    '''**Decode Ganglia metrics.**
 
     Receives xdr formatted data coming from a Ganglia client and decodes it
     into Wishbone format.

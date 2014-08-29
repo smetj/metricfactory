@@ -29,7 +29,7 @@ import sys
 
 class ModGearman(Actor):
 
-    '''**A module to decodes Mod_Gearman metrics into the default format.**
+    '''**Decode Nagios peformance data coming from Mod_Gearman.**
 
     Receives Nagios spool directory formatted data and decodes it into a
     MetricFactory format.
