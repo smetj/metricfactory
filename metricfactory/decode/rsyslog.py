@@ -23,7 +23,6 @@
 #
 
 from wishbone import Actor
-from wishbone.errors import QueueLocked
 from gevent import monkey;monkey.patch_time()
 from time import time
 import json

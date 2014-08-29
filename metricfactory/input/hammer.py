@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-#       graphite.py
+#       hammer.py
 #
 #       Copyright 2013 Jelle Smet development@smetj.net
 #
@@ -31,7 +31,9 @@ from gevent.socket import gethostname
 from gevent import spawn
 from gevent.event import Event
 
+
 class Hammer(Actor):
+
     '''**Generates random metric events.**
 
     Generates random metrics events in internal format with the purpose of
@@ -40,51 +42,61 @@ class Hammer(Actor):
 
     (time, type, source, name, value, unit, (tag1, tag2))
 
-    Parameters:
-
-        - name (str):       The instance name when initiated.
-
-        - batch (int):      The number of batches to produce.  0 is unlimited.
-                            (default: 0)
-
-        - batch_size(int):  The number of unique data sets in 1 batch.
-                            (default: 1)
-
-        - set_size(int):    The number of unique metrics per set.
-                            (default: 1)
-
-        - sleep (float):    The time to sleep in between generating batches.
-                            (default: 1)
-
-        - value (int):      The maximum of the randomized metric value (default 1).
-
-        - prefix (str):     The top level name.
-                            (default: hammer)
-
-    Queues:
-
-        - outbox:    Generated metrics.
-
-
     Metrics names will have following name structure:
 
         <prefix>.set_<batch_size>.metric_<set_size>
 
-
         hammer.set_0.metric_0 34534 1382173076
+
+
+    Parameters:
+
+        - name(str)
+           |  The name of the module.
+
+        - size(int)
+           |  The default max length of each queue.
+
+        - frequency(int)
+           |  The frequency in seconds to generate metrics.
+
+        - batch(int)(0)
+            |  The number of batches to produce.
+            |  0 is unlimited.
+
+        - batch_size(int)(1)
+            |  The number of unique data sets in 1 batch.
+
+        - set_size(int)(1)
+            |  The number of unique metrics per set.
+
+        - sleep(float)(1)
+            |  The time to sleep in between generating batches.
+
+        - value (int)(1)
+            |  The maximum of the randomized metric value (default 1).
+
+        - prefix(str)(hammer)
+            |  The top level name.
+
+
+    Queues:
+
+        - outbox
+           |  Outgoing messges
 
     '''
 
-    def __init__(self, name, batch=0, batch_size=1, set_size=1, sleep=1, value=1, prefix='hammer'):
-        Actor.__init__(self, name, setupbasic=False)
-        self.name=name
+    def __init__(self, name, size=100, frequency=1, batch=0, batch_size=1, set_size=1, sleep=1, value=1, prefix='hammer'):
+        Actor.__init__(self, name, size, frequency)
+        self.name = name
 
-        self.batch=batch
-        self.batch_size=batch_size
-        self.set_size=set_size
-        self.sleep_value=float(sleep)
-        self.value=value
-        self.prefix=prefix
+        self.batch = batch
+        self.batch_size = batch_size
+        self.set_size = set_size
+        self.sleep_value = float(sleep)
+        self.value = value
+        self.prefix = prefix
 
         if batch == 0:
             self.generateNextBatchAllowed = self.__returnTrue
@@ -96,39 +108,31 @@ class Hammer(Actor):
         else:
             self.doSleep = self.__doSleep
 
-        self.pause = Event()
-        self.pause.set()
+        self.pool.createQueue("outbox")
 
     def preHook(self):
-        sleep(1)
         spawn(self.generate)
 
     def generate(self):
-        switcher = self.getContextSwitcher(100)
-        batch_counter=0
-        while switcher():
-            if self.generateNextBatchAllowed(batch_counter) == True:
+        batch_counter = 0
+        while self.loop():
+            if self.generateNextBatchAllowed(batch_counter) is True:
                 for event in self.generateBatch():
-                    try:
-                        self.queuepool.outbox.put({"header":{}, "data":event})
-                    except:
-                        self.queuepool.outbox.waitUntilPutAllowed()
-                        self.queuepool.outbox.put({"header":{}, "data":event})
-                batch_counter+=1
+                    self.submit({"header": {}, "data": event}, self.pool.queue.outbox)
+                batch_counter += 1
             else:
+                self.logging.warn('Reached the batch_size of %s.  Not generating any further metrics.' % (self.batch_size))
                 break
             self.doSleep()
-        self.logging.warn('Reached the batch_size of %s.  Not generating any further metrics.'%(self.batch_size))
 
     def generateBatch(self):
-        #(time, type, source, name, value, unit, (tag1, tag2))
-        #(1381002603.726132, 'wishbone', 'wishbone', 'queue.outbox.in_rate', 0, '', ())
+        # (time, type, source, name, value, unit, (tag1, tag2))
+        # (1381002603.726132, 'wishbone', 'wishbone', 'queue.outbox.in_rate', 0, '', ())
         timestamp = time()
 
         for set_name in xrange(self.batch_size):
             for metric_name in xrange(self.set_size):
-                self.pause.wait()
-                yield (timestamp, 'test', 'hammer', '%s.set_%s.metric_%s'%(self.prefix, set_name, metric_name), randint(0, self.value), '', () )
+                yield (timestamp, 'test', 'hammer', '%s.set_%s.metric_%s' % (self.prefix, set_name, metric_name), randint(0, self.value), '', ())
 
     def __evaluateCounter(self, counter):
         if counter == self.batch:
@@ -143,10 +147,4 @@ class Hammer(Actor):
         sleep(self.sleep_value)
 
     def __doNoSleep(self):
-        sleep(0.0001)
-
-    def enableThrottling(self):
-        self.pause.clear()
-
-    def disableThrottling(self):
-        self.pause.set()
+        pass

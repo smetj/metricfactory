@@ -79,21 +79,20 @@ setup(
     zip_safe=False,
     entry_points={
         'console_scripts': ['metricfactory = metricfactory.main:main'],
-        'metricfactory.encoder': [
+        'metricfactory.encode': [
         ],
-        'metricfactory.decoder': [
-            "modgearman = metricfactory.decoder:ModGearman",
-            "ganglia = metricfactory.decoder:Ganglia",
-            "elasticsearch = metricfactory.decoder:Elasticsearch",
-            "rabbitmq = metricfactory.decoder:RabbitMQ",
-            "rsyslog = metricfactory.decoder:Rsyslog"
+        'metricfactory.decode': [
+            "modgearman = metricfactory.decode:ModGearman",
+            "ganglia = metricfactory.decode:Ganglia",
+            "elasticsearch = metricfactory.decode:Elasticsearch",
+            "rabbitmq = metricfactory.decode:RabbitMQ",
+            "rsyslog = metricfactory.decode:Rsyslog"
         ],
         'metricfactory.filter': [
             "metricfilter = metricfactory.filter:MetricFilter"
         ],
-        'metricfactory.test': [
-            "hammer = metricfactory.test:Hammer"
+        'metricfactory.input': [
+            "hammer = metricfactory.input:Hammer"
         ]
-
     }
 )

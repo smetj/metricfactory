@@ -29,7 +29,7 @@ import sys
 
 def main():
     try:
-        BootStrap(include_groups=["metricfactory.encoder", "metricfactory.decoder", "metricfactory.filter", "metricfactory.test"])
+        BootStrap(include_groups=["metricfactory.encode", "metricfactory.decode", "metricfactory.filter", "metricfactory.input"])
     except Exception as err:
         sys.stderr.write("Failed to bootstrap instance.  Reason: %s\n" % (err))
         sys.stderr.flush()
