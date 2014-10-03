@@ -86,54 +86,68 @@ class ModGearman(Actor):
             for metric in self.decodeMetrics(event["data"]):
                 self.submit({"header": event["header"], "data": metric}, self.pool.queue.outbox)
         except Exception as err:
-            self.logging.warn('Malformatted performance data received. Reason: %s' % (err))
+
+            self.logging.warn('Malformatted performance data received. Reason: %s Line: %s' % (err, sys.exc_traceback.tb_lineno))
             raise
 
     def decodeMetrics(self, data):
 
-        # DATATYPE::SERVICEPERFDATA\t
-        # TIMET::1383478571\t
-        # HOSTNAME::dev-umi-master-101.flatns.net\t
-        # SERVICEDESC::Default Processes\t
-        # SERVICEPERFDATA::check_multi::check_multi::plugins=5 time=0.058422\t
-        # SERVICECHECKCOMMAND::check:nagios.multicheck.status\t
-        # SERVICESTATE::0\t
-        # SERVICESTATETYPE::1\n\n\n\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00
+        # DATATYPE::HOSTPERFDATA    TIMET::1411637927   HOSTNAME::prod-cpp-corewspro-w2-204.flatns.net  HOSTPERFDATA::rta=0.751ms;3000.000;5000.000;0; pl=0%;80;100;;   HOSTCHECKCOMMAND::check:host.alive!(null)   HOSTSTATE::0    HOSTSTATETYPE::1
+        # DATATYPE::SERVICEPERFDATA TIMET::1411637603   HOSTNAME::ct-cpp-pgdball-w0-001.flatns.net  SERVICEDESC::Postgres backends sources  SERVICEPERFDATA::time=0.02  'kangaroo'=20;540;570;0;600 'moma'=0;540;570;0;600 'postgres'=1;540;570;0;600 'slf'=128;540;570;0;600 'template0'=0;540;570;0;600 'template1'=0;540;570;0;600 'trafficsign'=42;540;570;0;600    SERVICECHECKCOMMAND::check:postgres.backends.status SERVICESTATE::0 SERVICESTATETYPE::1
 
-        metadata = {}
-        for element in data.split("\t"):
-            parts = re.search('(.*?)::(.*)', element)
-            metadata[parts.group(1).lower()] = parts.group(2)
+        d = self.__chopStringDict(data)
 
-        if 'serviceperfdata' in metadata:
-            metric_type = "serviceperfdata"
-        if 'hostperfdata' in metadata:
-            metric_type = "hostperfdata"
+        for metric in re.findall('(\w*?\'*=\d*(?:\.\d*)?(?:s|us|ms|%|B|MB|KB|TB|c)?)', d["perfdata"]):
+            # name and value
+            (metric_name, metric_value) = metric.split('=')
+            metric_name = self.__filter(metric_name)
 
-        for metric in re.sub('.*::', '', metadata[metric_type]).split(' '):
-            (key, value) = metric.split('=')
-            value = value.split(";")[0]
-            value_unit = self.regex.search(value)
+            # metric time
+            metric_timet = d["timet"]
 
-            if value_unit is None:
-                units = ''
-            elif value_unit.group(2):
-                value = value_unit.group(1)
-                units = value_unit.group(2)
+            # metric unit
+            re_unit = re.search("\D+$", metric_value)
+            if re_unit is None:
+                metric_unit = ''
             else:
-                units = ''
-            tags = []
-            tags.append(self.__filter(metadata.get("servicecheckcommand", metadata.get("hostcheckcommand", ""))))
-            if "servicedesc" in metadata:
-                tags.append(self.__filter(metadata["servicedesc"]))
-                tags.append("servicecheck")
-                basename = self.__filter(metadata["servicedesc"])
-            else:
-                basename = "hostcheck"
-                tags.append("hostcheck")
+                metric_unit = re_unit.group(0)
+            metric_value = metric_value.rstrip(metric_unit)
 
-            # (1381002603.726132, 'wishbone', 'hostname', 'queue.outbox.in_rate', 0, '', ())
-            yield((metadata["timet"], "nagios", self.replacePeriod(self.__filter(metadata["hostname"])), "%s.%s" % (basename, self.__filter(key)), value, units, tuple(tags)))
+            # tags
+            tags = [d["type"], d["checkcommand"]]
+
+            yield (metric_timet, "nagios", d["hostname"], "%s.%s" % (d["name"], metric_name), metric_value, metric_unit, tuple(tags))
+
+    def __chopStringDict(self, data):
+        '''Returns a dictionary of the provided raw service/host check string.'''
+
+        r = {}
+        d = data.split('\t')
+        for item in d:
+            item_parts = item.split('::')
+            if len(item_parts) == 2:
+                (name, value) = item_parts
+            else:
+                name = item_parts[0]
+                value = item_parts[1]
+
+            name = self.__filter(name)
+            r[name] = value
+
+        if "hostperfdata" in r:
+            r["type"] = "hostcheck"
+            r["perfdata"] = r["hostperfdata"]
+            r["checkcommand"] = re.search("(.*?)!\(?.*", r["hostcheckcommand"]).group(1)
+            r["name"] = "hostcheck"
+        else:
+            r["type"] = "servicecheck"
+            r["perfdata"] = r["serviceperfdata"]
+            r["checkcommand"] = re.search("((.*)(?=\!)|(.*))", r["servicecheckcommand"]).group(1)
+            r["name"] = self.__filter(r["servicedesc"])
+
+        r["hostname"] = self.replacePeriod(self.__filter(r["hostname"]))
+
+        return r
 
     def __filter(self, name):
         '''Filter out problematic characters.
@@ -147,6 +161,7 @@ class ModGearman(Actor):
         name = name.replace('!(null)', '')
         name = name.replace(" ", "_")
         name = name.replace("/", "_")
+        name = name.replace(".", "_")
         return name.lower()
 
     def __doReplacePeriod(self, data):
