@@ -24,7 +24,9 @@
 
 from wishbone import Actor
 
+
 class MetricFilter(Actor):
+
     '''**MetricFilter is a MetricFactory filter to filter or rename metric names.***
 
     MetricFilter allows certain metrics to be dropped or metrics names to be
@@ -54,7 +56,7 @@ class MetricFilter(Actor):
 
     def __init__(self, name):
         Actor.__init__(self, name)
-        self.name=name
+        self.name = name
 
-    def consume(self,doc):
+    def consume(self, doc):
         pass
