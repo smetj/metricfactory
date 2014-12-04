@@ -5,26 +5,25 @@ MetricFactory
 What?
 -----
 
-A set of Wishbone modules to build metric processing servers.
+A collection of Wishbone modules to build metric processing servers.
 
 
 How?
 ----
 
-MetricFactory uses the WishBone library to build servers which allow you to
-accept, convert and process metrics from one source and submit them to another
-destination.
+MetricFactory makes use of the Wishbone framework to build metric processing
+servers.
 
-MetricFactory is collection of encoder, decoder and filter modules to build a
-pipeline of functionality.  Besides these modules you will also require one or
-more Wishbone modules from https://github.com/smetj/wishboneModules which
-allow you to accept and submit the metrics outside of the framework.
+The collection of encoder, decoder and filter modules are interconnecting
+processing blocks which enable you to construct a processing pipeline. You can
+combine these modules with the [builtin Wishbone
+modules](http://wishbone.readthedocs.org/en/latest/builtin%20modules.html).
 
-Decoders convert metrics into an internal format.  Encoders convert them again
-to a native format.
+Decoders convert metrics into an internal Wishbone format.  Encoders convert
+them again to a native format.
 
-Using a bootstrap file you select and connect different modules into an event
-pipeline and start a Metricfactory server from commandline.
+A bootstrap file defines the modules, how they're initialized and connected
+and allows you to start a server from cli.
 
 For more information see https://wishbone.readthedocs.org/en/latest
 
