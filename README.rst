@@ -16,8 +16,7 @@ servers.
 
 The collection of encoder, decoder and filter modules are interconnecting
 processing blocks which enable you to construct a processing pipeline. You can
-combine these modules with the [builtin Wishbone
-modules](http://wishbone.readthedocs.org/en/latest/builtin%20modules.html).
+combine these modules with the `builtin Wishbone modules`_.
 
 Decoders convert metrics into an internal Wishbone format.  Encoders convert
 them again to a native format.
@@ -63,3 +62,6 @@ Examples
 --------
 
 https://github.com/smetj/experiments/tree/master/metricfactory
+
+
+.. _builtin Wishbone modules: http://wishbone.readthedocs.org/en/latest/builtin%20modules.html
