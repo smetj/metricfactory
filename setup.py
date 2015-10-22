@@ -27,8 +27,8 @@ from setuptools.command.test import test as TestCommand
 import sys
 
 PROJECT = 'metricfactory'
-VERSION = '0.2.8'
-install_requires = ['wishbone']
+VERSION = '0.3.0'
+install_requires = ['wishbone>=1.1.1']
 
 try:
     long_description = open('README.rst', 'rt').read()
@@ -80,11 +80,12 @@ setup(
     entry_points={
         'console_scripts': ['metricfactory = metricfactory.main:main'],
         'metricfactory.encode': [
+            "formatconstructor = metricfactory.encode.formatconstructor:FormatConstructor"
         ],
         'metricfactory.decode': [
+            "jsonflatten = metricfactory.decode.jsonflatten:JSONFlatten",
             "modgearman = metricfactory.decode:ModGearman",
             "ganglia = metricfactory.decode:Ganglia",
-            "elasticsearch = metricfactory.decode:Elasticsearch",
             "rabbitmq = metricfactory.decode:RabbitMQ",
             "rsyslog = metricfactory.decode:Rsyslog"
         ],
