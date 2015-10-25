@@ -89,24 +89,29 @@ class JSONFlatten(Actor):
 
     def consume(self, event):
 
-        if isinstance(event.data, dict):
-            for name, value in self.recurseDictionary(event.data):
+        if isinstance(event.data, dict) or isinstance(event.data, list):
+            for name, value in self.recurseData(event.data):
                 e = self.createEvent()
                 e.setData(Metric(time(), self.kwargs.type, self.kwargs.source, name, value, "", self.kwargs.tags))
                 self.submit(e, self.pool.queue.outbox)
         else:
             raise Exception("Dropped incoming data because not of type <dict>. Perhaps you forgot to feed the data through wishbone.decode.json first?")
 
-    def recurseDictionary(self, d, breadcrumbs=""):
+    def recurseData(self, data, breadcrumbs=""):
 
-        for key, value in d.iteritems():
-            if isinstance(value, dict):
+        if isinstance(data, list):
+            for item in data:
+                for a, b in self.recurseData(item, breadcrumbs):
+                    yield a, b
+        elif isinstance(data, dict):
+            for key, value in data.iteritems():
                 name = self.__concatBreadCrumbs(breadcrumbs, key)
-                for name, value in self.recurseDictionary(value, name):
-                    yield name, value
-            elif isinstance(value, (int, long, float)):
-                name = self.__concatBreadCrumbs(breadcrumbs, key)
-                yield name, value
+                for a, b in self.recurseData(value, name):
+                    yield a, b
+        elif isinstance(data, bool):
+            pass
+        elif isinstance(data, (int, long, float)):
+            yield breadcrumbs, data
 
     def __concatBreadCrumbs(self, breadcrumbs, element_name):
 
